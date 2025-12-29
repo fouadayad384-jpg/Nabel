@@ -3,263 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نبيل لوكر - Nabil Locker</title>
+    <title>نبيل لوكر - نظام التخزين الدائم</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Cairo', sans-serif;
-            background-color: #f8fafc;
+            background-color: #f1f5f9;
         }
         .custom-shadow {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        .transition-all {
-            transition: all 0.3s ease;
+        .animate-pop {
+            animation: pop 0.3s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
     </style>
 </head>
-<body class="text-slate-900 leading-relaxed">
+<body class="text-slate-900 overflow-x-hidden">
 
-    <div id="app" class="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
+    <div id="app" class="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+        
         <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 custom-shadow">
+        <header class="bg-white p-6 rounded-3xl border border-slate-200 custom-shadow flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-4">
-                <div class="bg-amber-500 p-3 rounded-xl shadow-lg shadow-amber-200">
+                <div class="bg-indigo-600 p-4 rounded-2xl shadow-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
                 <div>
-                    <h1 class="text-3xl font-black text-slate-800 tracking-tight">نبيل لوكر</h1>
-                    <p class="text-slate-500 text-sm italic">الإصدار الكامل - نظام المخازن الثلاثة</p>
+                    <h1 class="text-3xl font-black text-slate-800">نبيل لوكر</h1>
+                    <div class="flex items-center gap-2 text-emerald-600 text-sm font-bold">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        التخزين السحابي المحلي مفعل
+                    </div>
                 </div>
             </div>
-            <div id="total-badge" class="px-4 py-2 bg-slate-100 rounded-full text-slate-700 font-bold border border-slate-200">
-                إجمالي الحسابات: <span id="total-count">0</span>
+            <div class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold text-center">
+                <div class="text-[10px] text-slate-400 uppercase">إجمالي المخزون</div>
+                <span id="total-count" class="text-xl">0</span>
             </div>
         </header>
 
-        <!-- Configuration Section -->
-        <section class="bg-white p-6 rounded-2xl border border-slate-200 custom-shadow space-y-4">
-            <div class="flex items-center gap-2 mb-2 text-indigo-600 font-bold text-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                تعبئة المخازن
+        <!-- Input Section -->
+        <section class="bg-white p-6 rounded-3xl border border-slate-200 custom-shadow space-y-5">
+            <div class="flex items-center justify-between">
+                <h2 class="font-black text-xl flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    إضافة حسابات جديدة
+                </h2>
+                <span id="save-status" class="text-xs font-bold text-slate-400">بانتظار البيانات...</span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <button onclick="setTarget('general')" id="btn-general" class="category-btn p-3 rounded-xl border-2 border-indigo-500 bg-indigo-50 text-indigo-700 font-bold transition-all flex items-center justify-center gap-2">
-                    المخزن العام
-                </button>
-                <button onclick="setTarget('go')" id="btn-go" class="category-btn p-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold transition-all flex items-center justify-center gap-2">
-                    اشتراك GO
-                </button>
-                <button onclick="setTarget('work')" id="btn-work" class="category-btn p-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold transition-all flex items-center justify-center gap-2">
-                    مساحة العمل
-                </button>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="changeTab('general')" id="tab-general" class="tab-btn py-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 font-bold text-sm">عام</button>
+                <button onclick="changeTab('go')" id="tab-go" class="tab-btn py-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold text-sm">GO</button>
+                <button onclick="changeTab('work')" id="tab-work" class="tab-btn py-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold text-sm">مساحة عمل</button>
             </div>
 
-            <textarea id="input-data" class="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono" placeholder="الصق الحسابات بصيغة: login;password;recovery;link"></textarea>
+            <textarea id="main-input" class="w-full h-40 p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition-all font-mono text-sm" placeholder="انسخ الحسابات هنا..."></textarea>
             
-            <button onclick="addEmails()" class="w-full bg-slate-900 text-white py-4 rounded-xl font-black text-lg hover:bg-black transition-all active:scale-[0.98]">
-                إضافة الحسابات إلى المخزن المحدد
+            <button onclick="processInput()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-indigo-700 shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+                حفظ في مخزن <span id="current-tab-name">العام</span>
             </button>
         </section>
 
-        <!-- Pulling Area -->
+        <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Box 1 -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-3">
-                <div class="text-indigo-500 bg-indigo-50 p-3 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
-                </div>
-                <h3 class="font-black text-slate-800">المخزن العام</h3>
-                <span id="count-general" class="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 font-bold">0 متاح</span>
-                <button onclick="pull('general')" class="w-full py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors">سحب عام</button>
-                <button onclick="clearStore('general')" class="text-slate-300 hover:text-rose-500 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3">
+                <div class="text-indigo-600 font-black">المخزن العام</div>
+                <div id="c-general" class="text-3xl font-black text-slate-800">0</div>
+                <button onclick="pullAccount('general')" class="w-full bg-slate-100 hover:bg-indigo-600 hover:text-white py-2 rounded-xl font-bold transition-all">سحب</button>
             </div>
-
-            <!-- Box 2 -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-3">
-                <div class="text-emerald-500 bg-emerald-50 p-3 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-2.5 5-2.5"/><path d="M12 15v5s3.03-.55 4.5-2c1.63-1.62 2.5-5 2.5-5"/></svg>
-                </div>
-                <h3 class="font-black text-slate-800">اشتراك GO</h3>
-                <span id="count-go" class="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 font-bold">0 متاح</span>
-                <button onclick="pull('go')" class="w-full py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 transition-colors">سحب GO</button>
-                <button onclick="clearStore('go')" class="text-slate-300 hover:text-rose-500 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3">
+                <div class="text-emerald-600 font-black">اشتراك GO</div>
+                <div id="c-go" class="text-3xl font-black text-slate-800">0</div>
+                <button onclick="pullAccount('go')" class="w-full bg-slate-100 hover:bg-emerald-600 hover:text-white py-2 rounded-xl font-bold transition-all">سحب</button>
             </div>
-
-            <!-- Box 3 -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-3">
-                <div class="text-blue-500 bg-blue-50 p-3 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
-                </div>
-                <h3 class="font-black text-slate-800">مساحة العمل</h3>
-                <span id="count-work" class="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 font-bold">0 متاح</span>
-                <button onclick="pull('work')" class="w-full py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors">سحب مساحة</button>
-                <button onclick="clearStore('work')" class="text-slate-300 hover:text-rose-500 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3">
+                <div class="text-blue-600 font-black">مساحة العمل</div>
+                <div id="c-work" class="text-3xl font-black text-slate-800">0</div>
+                <button onclick="pullAccount('work')" class="w-full bg-slate-100 hover:bg-blue-600 hover:text-white py-2 rounded-xl font-bold transition-all">سحب</button>
             </div>
         </div>
 
-        <!-- Pulled Result Display -->
-        <div id="result-card" class="hidden">
-            <div class="bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border-2 border-slate-900 animate-bounce-short">
-                <div class="bg-indigo-600 p-4 text-white flex justify-between items-center">
-                    <span class="font-black flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        الحساب المسحوب حالياً
+        <!-- Result -->
+        <div id="display-area" class="hidden animate-pop">
+            <div class="bg-white rounded-3xl border-4 border-slate-900 overflow-hidden shadow-2xl">
+                <div class="bg-slate-900 p-4 text-white flex justify-between items-center">
+                    <span class="font-bold flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        تم سحب الحساب بنجاح
                     </span>
-                    <span id="result-category" class="text-[10px] bg-white/20 px-2 py-1 rounded uppercase">CATEGORY</span>
+                    <button onclick="closeResult()" class="text-slate-400 hover:text-white">إغلاق</button>
                 </div>
-                <div class="p-6 bg-white grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="field-box">
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
                         <label class="text-[10px] font-black text-slate-400 uppercase">Login</label>
                         <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <span id="res-login" class="flex-1 font-mono text-sm truncate select-all">---</span>
-                            <button onclick="copyTo('res-login')" class="text-indigo-600 hover:scale-110 transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+                            <span id="out-login" class="flex-1 font-mono text-sm truncate select-all">---</span>
+                            <button onclick="copy('out-login')" class="text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
                         </div>
                     </div>
-                    <div class="field-box">
+                    <div class="space-y-1">
                         <label class="text-[10px] font-black text-slate-400 uppercase">Password</label>
                         <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <span id="res-pass" class="flex-1 font-mono text-sm truncate select-all">---</span>
-                            <button onclick="copyTo('res-pass')" class="text-indigo-600 hover:scale-110 transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+                            <span id="out-pass" class="flex-1 font-mono text-sm truncate select-all">---</span>
+                            <button onclick="copy('out-pass')" class="text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
                         </div>
                     </div>
-                    <div class="field-box">
+                    <div class="space-y-1">
                         <label class="text-[10px] font-black text-slate-400 uppercase">Recovery</label>
                         <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <span id="res-recovery" class="flex-1 font-mono text-sm truncate select-all">---</span>
-                            <button onclick="copyTo('res-recovery')" class="text-indigo-600 hover:scale-110 transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+                            <span id="out-recovery" class="flex-1 font-mono text-sm truncate select-all">---</span>
+                            <button onclick="copy('out-recovery')" class="text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
                         </div>
                     </div>
-                    <div class="field-box">
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Link</label>
-                        <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <a id="res-link" href="#" target="_blank" class="flex-1 font-mono text-xs text-blue-600 underline truncate">فتح الرابط</a>
-                            <button onclick="copyLink()" class="text-indigo-600 hover:scale-110 transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
-                        </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase">Action</label>
+                        <a id="out-link" href="#" target="_blank" class="flex items-center justify-center gap-2 bg-indigo-600 text-white p-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
+                            فتح رابط الرسائل
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <footer class="text-center text-slate-400 text-xs py-10">
-            Nabil Locker &copy; 2025 - جميع الحقوق محفوظة
-        </footer>
+        <button onclick="fullReset()" class="w-full text-slate-300 hover:text-rose-500 text-xs font-bold transition-all">مسح جميع بيانات نبيل لوكر نهائياً</button>
+
     </div>
 
     <script>
-        // State
-        let currentTarget = 'general';
-        let storage = {
-            general: [],
-            go: [],
-            work: []
-        };
+        // توحيد مفتاح التخزين لضمان عدم الضياع
+        const STORAGE_KEY = 'NABIL_LOCKER_VAULT_PRO';
+        let activeTab = 'general';
+        let db = { general: [], go: [], work: [] };
 
-        // Initialize
-        window.onload = () => {
-            const saved = localStorage.getItem('nabil_locker_data');
-            if (saved) {
-                storage = JSON.parse(saved);
-                updateUI();
+        // 1. القراءة عند تشغيل الموقع
+        window.addEventListener('DOMContentLoaded', () => {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    db = JSON.parse(raw);
+                    console.log("Data loaded successfully");
+                } catch (e) {
+                    console.error("Data corruption, resetting...");
+                    save(); // إعادة تعيين التخزين في حال الخطأ
+                }
             }
-        };
+            refreshUI();
+        });
 
-        function setTarget(target) {
-            currentTarget = target;
-            document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-700', 'border-emerald-500', 'bg-emerald-50', 'text-emerald-700', 'border-blue-500', 'bg-blue-50', 'text-blue-700');
-                btn.classList.add('border-slate-100', 'bg-slate-50', 'text-slate-500');
+        function changeTab(t) {
+            activeTab = t;
+            const names = { general: 'العام', go: 'اشتراك GO', work: 'مساحة العمل' };
+            document.getElementById('current-tab-name').innerText = names[t];
+            
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.className = "tab-btn py-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold text-sm";
+            });
+            
+            const activeColors = { 
+                general: 'border-indigo-600 bg-indigo-50 text-indigo-700',
+                go: 'border-emerald-600 bg-emerald-50 text-emerald-700',
+                work: 'border-blue-600 bg-blue-50 text-blue-700'
+            };
+            document.getElementById('tab-' + t).className = "tab-btn py-3 rounded-xl border-2 font-bold text-sm " + activeColors[t];
+        }
+
+        function processInput() {
+            const val = document.getElementById('main-input').value.trim();
+            if (!val) return;
+
+            const lines = val.split('\n');
+            let added = 0;
+            
+            lines.forEach(line => {
+                if (line.includes(';')) {
+                    const [l, p, r, u] = line.split(';');
+                    db[activeTab].push({ login: l, pass: p, recovery: r, url: u });
+                    added++;
+                }
             });
 
-            const activeBtn = document.getElementById('btn-' + target);
-            if (target === 'general') activeBtn.className = "category-btn p-3 rounded-xl border-2 border-indigo-500 bg-indigo-50 text-indigo-700 font-bold transition-all flex items-center justify-center gap-2";
-            if (target === 'go') activeBtn.className = "category-btn p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 font-bold transition-all flex items-center justify-center gap-2";
-            if (target === 'work') activeBtn.className = "category-btn p-3 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-700 font-bold transition-all flex items-center justify-center gap-2";
-        }
-
-        function addEmails() {
-            const text = document.getElementById('input-data').value;
-            const lines = text.split('\n');
-            const newAccounts = lines
-                .map(l => l.trim())
-                .filter(l => l && l.includes(';'))
-                .map(l => {
-                    const parts = l.split(';');
-                    return { login: parts[0], pass: parts[1], recovery: parts[2], link: parts[3] };
-                });
-
-            if (newAccounts.length > 0) {
-                storage[currentTarget] = [...storage[currentTarget], ...newAccounts];
-                document.getElementById('input-data').value = '';
+            if (added > 0) {
+                document.getElementById('main-input').value = '';
                 save();
-                updateUI();
+                refreshUI();
+                showStatus(`تمت إضافة ${added} حساب بنجاح`);
             }
         }
 
-        function pull(category) {
-            if (storage[category].length === 0) {
-                alert('هذا المخزن فارغ!');
+        function pullAccount(cat) {
+            if (db[cat].length === 0) {
+                showStatus("هذا المخزن فارغ!");
                 return;
             }
 
-            const acc = storage[category].shift();
+            const item = db[cat].shift(); // سحب وحذف
             
-            // Show result
-            document.getElementById('result-card').classList.remove('hidden');
-            document.getElementById('result-category').innerText = category === 'general' ? 'عام' : category === 'go' ? 'GO' : 'مساحة عمل';
-            document.getElementById('res-login').innerText = acc.login || '---';
-            document.getElementById('res-pass').innerText = acc.pass || '---';
-            document.getElementById('res-recovery').innerText = acc.recovery || '---';
-            document.getElementById('res-link').href = acc.link || '#';
-            
+            // عرض النتائج
+            document.getElementById('display-area').classList.remove('hidden');
+            document.getElementById('out-login').innerText = item.login || '---';
+            document.getElementById('out-pass').innerText = item.pass || '---';
+            document.getElementById('out-recovery').innerText = item.recovery || '---';
+            document.getElementById('out-link').href = item.url || '#';
+
             save();
-            updateUI();
+            refreshUI();
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
 
         function save() {
-            localStorage.setItem('nabil_locker_data', JSON.stringify(storage));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
         }
 
-        function updateUI() {
-            document.getElementById('count-general').innerText = storage.general.length + ' متاح';
-            document.getElementById('count-go').innerText = storage.go.length + ' متاح';
-            document.getElementById('count-work').innerText = storage.work.length + ' متاح';
-            document.getElementById('total-count').innerText = storage.general.length + storage.go.length + storage.work.length;
+        function refreshUI() {
+            document.getElementById('c-general').innerText = db.general.length;
+            document.getElementById('c-go').innerText = db.go.length;
+            document.getElementById('c-work').innerText = db.work.length;
+            document.getElementById('total-count').innerText = db.general.length + db.go.length + db.work.length;
         }
 
-        function clearStore(category) {
-            if (confirm('تصفير مخزن ' + category + '؟')) {
-                storage[category] = [];
-                save();
-                updateUI();
-            }
-        }
-
-        function copyTo(id) {
-            const text = document.getElementById(id).innerText;
-            copyText(text);
-        }
-
-        function copyLink() {
-            const text = document.getElementById('res-link').href;
-            copyText(text);
-        }
-
-        function copyText(text) {
+        function copy(id) {
+            const txt = document.getElementById(id).innerText;
             const el = document.createElement('textarea');
-            el.value = text;
+            el.value = txt;
             document.body.appendChild(el);
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            // Simple visual feedback
-            const toast = document.createElement('div');
-            toast.className = "fixed bottom-5 left-5 bg-black text-white px-4 py-2 rounded-lg text-xs z-50";
-            toast.innerText = "تم النسخ بنجاح";
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
+            showStatus("تم النسخ!");
+        }
+
+        function showStatus(msg) {
+            const s = document.getElementById('save-status');
+            s.innerText = msg;
+            s.classList.replace('text-slate-400', 'text-indigo-600');
+            setTimeout(() => {
+                s.innerText = "التخزين آمن";
+                s.classList.replace('text-indigo-600', 'text-slate-400');
+            }, 3000);
+        }
+
+        function closeResult() {
+            document.getElementById('display-area').classList.add('hidden');
+        }
+
+        function fullReset() {
+            if (confirm("سيتم حذف كل شيء من نبيل لوكر، هل أنت متأكد؟")) {
+                db = { general: [], go: [], work: [] };
+                save();
+                refreshUI();
+                location.reload();
+            }
         }
     </script>
 </body>
