@@ -1,0 +1,263 @@
+import React, { useState, useEffect } from 'react';
+import { Mail, Key, ShieldCheck, Link as LinkIcon, Trash2, RefreshCcw, CheckCircle2, AlertCircle, Copy, Lock, Rocket, Briefcase, Database } from 'lucide-react';
+
+export default function App() {
+  // State for different inventories
+  const [inventories, setInventories] = useState({
+    general: [],
+    go_subscription: [],
+    workspace: []
+  });
+
+  const [lastUsed, setLastUsed] = useState(null);
+  const [inputData, setInputData] = useState('');
+  const [selectedTarget, setSelectedTarget] = useState('general');
+  const [copiedField, setCopiedField] = useState(null);
+
+  // Load data from local storage
+  useEffect(() => {
+    const saved = localStorage.getItem('nabil_locker_v2');
+    if (saved) {
+      setInventories(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save to local storage
+  useEffect(() => {
+    localStorage.setItem('nabil_locker_v2', JSON.stringify(inventories));
+  }, [inventories]);
+
+  const parseAndAdd = () => {
+    const lines = inputData.split('\n');
+    const newItems = lines
+      .map(line => line.trim())
+      .filter(line => line && line.includes(';'))
+      .map(line => {
+        const [login, password, recoveryEmail, recoveryEmailMessagesUrl] = line.split(';');
+        return {
+          id: Math.random().toString(36).substr(2, 9),
+          login: login?.trim(),
+          password: password?.trim(),
+          recoveryEmail: recoveryEmail?.trim(),
+          recoveryEmailMessagesUrl: recoveryEmailMessagesUrl?.trim(),
+          addedAt: new Date().toISOString(),
+          category: selectedTarget
+        };
+      })
+      .filter(item => item.login && item.password);
+
+    if (newItems.length > 0) {
+      setInventories(prev => ({
+        ...prev,
+        [selectedTarget]: [...prev[selectedTarget], ...newItems]
+      }));
+      setInputData('');
+    }
+  };
+
+  const pullAccount = (category) => {
+    if (inventories[category].length === 0) return;
+    
+    const nextAccount = inventories[category][0];
+    setLastUsed(nextAccount);
+    
+    setInventories(prev => ({
+      ...prev,
+      [category]: prev[category].slice(1)
+    }));
+  };
+
+  const copyToClipboard = (text, field) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {}
+    document.body.removeChild(textArea);
+  };
+
+  const clearCategory = (category) => {
+    const names = { general: 'المخزن العام', go_subscription: 'اشتراك GO', workspace: 'مساحة العمل' };
+    if (window.confirm(`هل أنت متأكد من مسح جميع حسابات ${names[category]}؟`)) {
+      setInventories(prev => ({ ...prev, [category]: [] }));
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900" dir="rtl">
+      <div className="max-w-5xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <header className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-500 p-3 rounded-xl shadow-lg shadow-amber-100">
+              <Lock className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight">نبيل لوكر</h1>
+              <p className="text-slate-500 text-sm">نظام إدارة المخازن المتعددة</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="text-center px-4 py-2 bg-slate-100 rounded-lg">
+              <div className="text-xs text-slate-400">الإجمالي</div>
+              <div className="font-bold text-slate-700">
+                {inventories.general.length + inventories.go_subscription.length + inventories.workspace.length}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Dashboard Control (Addition) */}
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <RefreshCcw className="w-5 h-5 text-indigo-500" />
+            تعبئة البيانات الجديدة
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <button 
+              onClick={() => setSelectedTarget('general')}
+              className={`p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${selectedTarget === 'general' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500'}`}
+            >
+              <Database className="w-4 h-4" /> المخزن العام
+            </button>
+            <button 
+              onClick={() => setSelectedTarget('go_subscription')}
+              className={`p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${selectedTarget === 'go_subscription' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'}`}
+            >
+              <Rocket className="w-4 h-4" /> اشتراك GO
+            </button>
+            <button 
+              onClick={() => setSelectedTarget('workspace')}
+              className={`p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${selectedTarget === 'workspace' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-50 text-slate-500'}`}
+            >
+              <Briefcase className="w-4 h-4" /> مساحة العمل
+            </button>
+          </div>
+          <textarea 
+            className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono mb-4"
+            placeholder="لصق الحسابات هنا..."
+            value={inputData}
+            onChange={(e) => setInputData(e.target.value)}
+          />
+          <button 
+            onClick={parseAndAdd}
+            disabled={!inputData.trim()}
+            className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-black transition-all disabled:opacity-50"
+          >
+            إضافة الحسابات إلى {selectedTarget === 'general' ? 'المخزن العام' : selectedTarget === 'go_subscription' ? 'اشتراك GO' : 'مساحة العمل'}
+          </button>
+        </section>
+
+        {/* Pulling Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* General Pull */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Database /></div>
+              <button onClick={() => clearCategory('general')} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800">المخزن العام</h3>
+              <p className="text-xs text-slate-500">{inventories.general.length} حساب متاح</p>
+            </div>
+            <button 
+              onClick={() => pullAccount('general')}
+              disabled={inventories.general.length === 0}
+              className="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 transition-colors"
+            >
+              سحب عام
+            </button>
+          </div>
+
+          {/* GO Pull */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Rocket /></div>
+              <button onClick={() => clearCategory('go_subscription')} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800">اشتراك GO</h3>
+              <p className="text-xs text-slate-500">{inventories.go_subscription.length} حساب متاح</p>
+            </div>
+            <button 
+              onClick={() => pullAccount('go_subscription')}
+              disabled={inventories.go_subscription.length === 0}
+              className="w-full py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 disabled:bg-slate-100 disabled:text-slate-400 transition-colors"
+            >
+              سحب اشتراك GO
+            </button>
+          </div>
+
+          {/* Workspace Pull */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Briefcase /></div>
+              <button onClick={() => clearCategory('workspace')} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800">مساحة العمل</h3>
+              <p className="text-xs text-slate-500">{inventories.workspace.length} حساب متاح</p>
+            </div>
+            <button 
+              onClick={() => pullAccount('workspace')}
+              disabled={inventories.workspace.length === 0}
+              className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 transition-colors"
+            >
+              سحب مساحة عمل
+            </button>
+          </div>
+        </div>
+
+        {/* Display Pulled Account */}
+        {lastUsed && (
+          <section className="bg-white rounded-2xl shadow-xl border-2 border-slate-900 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-slate-900 p-4 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <span className="font-bold">
+                  الحساب المسحوب من: {lastUsed.category === 'general' ? 'المخزن العام' : lastUsed.category === 'go_subscription' ? 'اشتراك GO' : 'مساحة العمل'}
+                </span>
+              </div>
+            </div>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-white">
+              <Field label="Email / Login" value={lastUsed.login} icon={<Mail className="w-4 h-4" />} id="l" copiedField={copiedField} onCopy={copyToClipboard} />
+              <Field label="Password" value={lastUsed.password} icon={<Key className="w-4 h-4" />} id="p" copiedField={copiedField} onCopy={copyToClipboard} />
+              <Field label="Recovery Email" value={lastUsed.recoveryEmail} icon={<ShieldCheck className="w-4 h-4" />} id="r" copiedField={copiedField} onCopy={copyToClipboard} />
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-black text-slate-400">Recovery Link</label>
+                <div className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <LinkIcon className="w-4 h-4 text-slate-400" />
+                  <a href={lastUsed.recoveryEmailMessagesUrl} target="_blank" rel="noopener noreferrer" className="flex-1 text-xs text-blue-600 underline truncate font-mono">فتح رابط الرسائل</a>
+                  <button onClick={() => copyToClipboard(lastUsed.recoveryEmailMessagesUrl, 'u')} className="text-indigo-500 p-1">
+                    {copiedField === 'u' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value, icon, id, copiedField, onCopy }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[10px] uppercase font-black text-slate-400">{label}</label>
+      <div className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 group">
+        <span className="text-slate-400">{icon}</span>
+        <span className="flex-1 font-mono text-sm truncate select-all text-slate-700">{value}</span>
+        <button onClick={() => onCopy(value, id)} className="text-indigo-500 p-1 transition-transform active:scale-90">
+          {copiedField === id ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
