@@ -1,269 +1,401 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نبيل لوكر - نظام التخزين الدائم</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #f1f5f9;
-        }
-        .custom-shadow {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-        .animate-pop {
-            animation: pop 0.3s ease-out;
-        }
-        @keyframes pop {
-            0% { transform: scale(0.95); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-    </style>
-</head>
-<body class="text-slate-900 overflow-x-hidden">
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  onAuthStateChanged,
+  signInAnonymously,
+  signInWithCustomToken
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  collection, 
+  onSnapshot, 
+  updateDoc, 
+  deleteDoc, 
+  addDoc,
+  serverTimestamp,
+  query
+} from 'firebase/firestore';
+import { 
+  ShieldCheck, Database, CheckCircle, 
+  RefreshCw, Copy, PlusCircle, 
+  LayoutDashboard, List, Search, 
+  Trash2, History, Clock, XCircle
+} from 'lucide-react';
 
-    <div id="app" class="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+// --- Firebase Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'nabil-locker-v11';
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [inventories, setInventories] = useState({ general: [], go: [], work: [] });
+  const [allData, setAllData] = useState([]);
+  const [pullHistory, setPullHistory] = useState([]);
+  const [lastPulled, setLastPulled] = useState(null);
+  const [view, setView] = useState('main'); // main, manage, history
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // 1. Auth Setup
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (e) { console.error(e); }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      if (fbUser) setUser(fbUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Real-time Cloud Sync (Inventory & History)
+  useEffect(() => {
+    if (!user) return;
+    setIsSyncing(true);
+
+    // Sync Inventory
+    const invRef = collection(db, 'artifacts', appId, 'public', 'data', 'inventory');
+    const unsubInv = onSnapshot(invRef, (snap) => {
+      const grouped = { general: [], go: [], work: [] };
+      const flat = [];
+      snap.docs.forEach(d => {
+        const item = { id: d.id, ...d.data() };
+        if (grouped[item.category]) grouped[item.category].push(item);
+        flat.push(item);
+      });
+      setInventories(grouped);
+      setAllData(flat);
+      setIsSyncing(false);
+    });
+
+    // Sync Pull History
+    const historyRef = collection(db, 'artifacts', appId, 'public', 'data', 'history');
+    const unsubHistory = onSnapshot(historyRef, (snap) => {
+      const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      setPullHistory(logs);
+    });
+
+    return () => { unsubInv(); unsubHistory(); };
+  }, [user]);
+
+  // --- Functions ---
+  const pullItem = async (cat) => {
+    const item = inventories[cat][0];
+    if (!item) return;
+    try {
+      setLastPulled(item);
+      
+      // 1. Record in History (Rule 1 Path)
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
+        login: item.login,
+        category: item.category,
+        timestamp: serverTimestamp(),
+        fullDate: new Date().toLocaleString('ar-EG')
+      });
+
+      // 2. Delete from cloud
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id));
+    } catch (e) { alert("خطأ في السحب"); }
+  };
+
+  const addItem = async (e) => {
+    e.preventDefault();
+    const raw = e.target.raw.value.trim();
+    const cat = e.target.category.value;
+    if (!raw) return;
+
+    try {
+      const lines = raw.split('\n');
+      for (let line of lines) {
+        if (!line.trim()) continue;
+        const parts = line.split(/[;:]/);
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
+          login: parts[0]?.trim() || '',
+          password: parts[1]?.trim() || '---',
+          recovery: parts[2]?.trim() || '---',
+          url: parts[3]?.trim() || '',
+          category: cat,
+          createdAt: serverTimestamp()
+        });
+      }
+      e.target.reset();
+      alert("تم الرفع للسحابة بنجاح");
+    } catch (err) { alert("خطأ في السحابة"); }
+  };
+
+  const deleteHistory = async (id) => {
+    try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'history', id)); }
+    catch (e) { alert("خطأ في الحذف"); }
+  };
+
+  const deleteInventoryItem = async (id) => {
+    try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', id)); }
+    catch (e) { alert("خطأ في الحذف"); }
+  };
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-indigo-500 font-black gap-4">
+      <RefreshCw className="animate-spin" size={40} />
+      <span className="tracking-widest">NABIL CLOUD LOADING...</span>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#020617] text-slate-200 font-sans p-4 md:p-8" dir="rtl">
+      <div className="max-w-5xl mx-auto">
         
-        <!-- Header -->
-        <header class="bg-white p-6 rounded-3xl border border-slate-200 custom-shadow flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-4">
-                <div class="bg-indigo-600 p-4 rounded-2xl shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                </div>
-                <div>
-                    <h1 class="text-3xl font-black text-slate-800">نبيل لوكر</h1>
-                    <div class="flex items-center gap-2 text-emerald-600 text-sm font-bold">
-                        <span class="relative flex h-2 w-2">
-                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        التخزين السحابي المحلي مفعل
-                    </div>
-                </div>
+        {/* Modern Header */}
+        <header className="bg-[#0f172a]/95 backdrop-blur-xl sticky top-0 z-50 p-6 rounded-[2.5rem] border border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl mb-10">
+          <div className="flex items-center gap-5">
+            <div className="bg-indigo-600 p-3.5 rounded-2xl shadow-xl shadow-indigo-900/40">
+              <ShieldCheck className="text-white" size={28} />
             </div>
-            <div class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold text-center">
-                <div class="text-[10px] text-slate-400 uppercase">إجمالي المخزون</div>
-                <span id="total-count" class="text-xl">0</span>
+            <div>
+              <h1 className="text-2xl font-black text-white italic tracking-tight">نبيل لوكر</h1>
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                <span className="text-[11px] text-slate-500 font-black uppercase tracking-widest">السحابة نشطة الآن</span>
+              </div>
             </div>
+          </div>
+
+          <nav className="flex bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 shadow-inner">
+            <NavBtn active={view === 'main'} onClick={() => setView('main')} icon={<LayoutDashboard size={16}/>} label="الرئيسية" />
+            <NavBtn active={view === 'manage'} onClick={() => setView('manage')} icon={<List size={16}/>} label="المخزن" />
+            <NavBtn active={view === 'history'} onClick={() => setView('history')} icon={<History size={16}/>} label="السجلات" />
+          </nav>
         </header>
 
-        <!-- Input Section -->
-        <section class="bg-white p-6 rounded-3xl border border-slate-200 custom-shadow space-y-5">
-            <div class="flex items-center justify-between">
-                <h2 class="font-black text-xl flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                    إضافة حسابات جديدة
-                </h2>
-                <span id="save-status" class="text-xs font-bold text-slate-400">بانتظار البيانات...</span>
-            </div>
+        {/* View Content */}
+        <main className="animate-in fade-in duration-500">
+          
+          {view === 'main' && (
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 max-w-3xl mx-auto">
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <StatCard label="المخزن العام" count={inventories.general.length} color="indigo" onPull={() => pullItem('general')} />
+                <StatCard label="اشتراك GO" count={inventories.go.length} color="emerald" onPull={() => pullItem('go')} />
+                <StatCard label="مساحة العمل" count={inventories.work.length} color="blue" onPull={() => pullItem('work')} />
+              </div>
 
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="changeTab('general')" id="tab-general" class="tab-btn py-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 font-bold text-sm">عام</button>
-                <button onclick="changeTab('go')" id="tab-go" class="tab-btn py-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold text-sm">GO</button>
-                <button onclick="changeTab('work')" id="tab-work" class="tab-btn py-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold text-sm">مساحة عمل</button>
-            </div>
-
-            <textarea id="main-input" class="w-full h-40 p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition-all font-mono text-sm" placeholder="انسخ الحسابات هنا..."></textarea>
-            
-            <button onclick="processInput()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-indigo-700 shadow-lg shadow-indigo-100 active:scale-95 transition-all">
-                حفظ في مخزن <span id="current-tab-name">العام</span>
-            </button>
-        </section>
-
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3">
-                <div class="text-indigo-600 font-black">المخزن العام</div>
-                <div id="c-general" class="text-3xl font-black text-slate-800">0</div>
-                <button onclick="pullAccount('general')" class="w-full bg-slate-100 hover:bg-indigo-600 hover:text-white py-2 rounded-xl font-bold transition-all">سحب</button>
-            </div>
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3">
-                <div class="text-emerald-600 font-black">اشتراك GO</div>
-                <div id="c-go" class="text-3xl font-black text-slate-800">0</div>
-                <button onclick="pullAccount('go')" class="w-full bg-slate-100 hover:bg-emerald-600 hover:text-white py-2 rounded-xl font-bold transition-all">سحب</button>
-            </div>
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3">
-                <div class="text-blue-600 font-black">مساحة العمل</div>
-                <div id="c-work" class="text-3xl font-black text-slate-800">0</div>
-                <button onclick="pullAccount('work')" class="w-full bg-slate-100 hover:bg-blue-600 hover:text-white py-2 rounded-xl font-bold transition-all">سحب</button>
-            </div>
-        </div>
-
-        <!-- Result -->
-        <div id="display-area" class="hidden animate-pop">
-            <div class="bg-white rounded-3xl border-4 border-slate-900 overflow-hidden shadow-2xl">
-                <div class="bg-slate-900 p-4 text-white flex justify-between items-center">
-                    <span class="font-bold flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        تم سحب الحساب بنجاح
-                    </span>
-                    <button onclick="closeResult()" class="text-slate-400 hover:text-white">إغلاق</button>
-                </div>
-                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Login</label>
-                        <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <span id="out-login" class="flex-1 font-mono text-sm truncate select-all">---</span>
-                            <button onclick="copy('out-login')" class="text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Password</label>
-                        <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <span id="out-pass" class="flex-1 font-mono text-sm truncate select-all">---</span>
-                            <button onclick="copy('out-pass')" class="text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Recovery</label>
-                        <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <span id="out-recovery" class="flex-1 font-mono text-sm truncate select-all">---</span>
-                            <button onclick="copy('out-recovery')" class="text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Action</label>
-                        <a id="out-link" href="#" target="_blank" class="flex items-center justify-center gap-2 bg-indigo-600 text-white p-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
-                            فتح رابط الرسائل
+              {/* Pull Result Area */}
+              {lastPulled && (
+                <div className="bg-white text-slate-900 p-8 rounded-[3rem] shadow-2xl relative border-t-[12px] border-indigo-600 animate-in zoom-in-95">
+                  <div className="flex justify-between items-center mb-8">
+                    <h3 className="font-black text-2xl flex items-center gap-3 text-indigo-800">
+                      <CheckCircle className="text-emerald-500" size={28}/> تم السحب
+                    </h3>
+                    <button onClick={() => setLastPulled(null)} className="text-slate-300 hover:text-rose-500 transition-all"><XCircle size={30}/></button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <CopyItem label="الحساب / الإيميل" val={lastPulled.login} />
+                    <CopyItem label="كلمة المرور" val={lastPulled.password} />
+                    <CopyItem label="كود الاستعادة" val={lastPulled.recovery} />
+                    <div className="flex items-end">
+                      {lastPulled.url && (
+                        <a href={lastPulled.url} target="_blank" className="w-full bg-slate-900 text-white p-5 rounded-2xl text-center font-black text-sm flex items-center justify-center gap-3 hover:bg-black transition-all">
+                          رابط الرسائل <ExternalLink size={18}/>
                         </a>
+                      )}
                     </div>
+                  </div>
                 </div>
+              )}
+
+              {/* Add Inventory Form */}
+              <div className="bg-[#0f172a] p-10 rounded-[3rem] border border-slate-800 shadow-2xl space-y-8">
+                <div className="flex items-center gap-3 border-r-4 border-indigo-500 pr-4">
+                  <PlusCircle className="text-indigo-500" size={24}/>
+                  <h3 className="font-black text-xl">إضافة بيانات جديدة</h3>
+                </div>
+                <form onSubmit={addItem} className="space-y-6">
+                  <select name="category" className="w-full p-5 bg-slate-900 border border-slate-800 rounded-2xl outline-none font-black text-sm text-indigo-400 appearance-none cursor-pointer focus:ring-2 ring-indigo-500/20">
+                    <option value="general">المخزن العام</option>
+                    <option value="go">اشتراك GO</option>
+                    <option value="work">مساحة عمل</option>
+                  </select>
+                  <textarea 
+                    name="raw" 
+                    required
+                    className="w-full h-40 p-6 bg-slate-900 border border-slate-800 rounded-3xl font-mono text-sm outline-none focus:border-indigo-500 transition-all placeholder:text-slate-700" 
+                    placeholder="يمكنك الإضافة بعدة صيغ:&#10;user:pass&#10;user;pass;recovery;url"></textarea>
+                  <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-[2rem] font-black text-xl shadow-2xl shadow-indigo-900/40 transition-all active:scale-95">
+                    رفع للسحابة
+                  </button>
+                </form>
+              </div>
             </div>
-        </div>
+          )}
 
-        <button onclick="fullReset()" class="w-full text-slate-300 hover:text-rose-500 text-xs font-bold transition-all">مسح جميع بيانات نبيل لوكر نهائياً</button>
+          {view === 'manage' && (
+            <div className="bg-[#0f172a] rounded-[3rem] border border-slate-800 overflow-hidden shadow-2xl">
+              <div className="p-8 border-b border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
+                <h2 className="text-2xl font-black flex items-center gap-4">
+                  <List className="text-indigo-500" size={28} /> إدارة المخزن
+                </h2>
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18}/>
+                  <input 
+                    type="text" 
+                    placeholder="بحث في الحسابات..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-slate-950 p-4 pl-12 rounded-2xl border border-slate-800 text-sm outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse min-w-[700px]">
+                  <thead className="bg-slate-950/50 text-slate-500 text-[11px] font-black uppercase tracking-[0.2em]">
+                    <tr>
+                      <th className="p-6">الحساب</th>
+                      <th className="p-6">القسم</th>
+                      <th className="p-6">الباسورد</th>
+                      <th className="p-6 text-center">الإجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {allData.filter(i => i.login.includes(searchTerm)).map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-800/20 transition-all">
+                        <td className="p-6 font-black text-sm text-white">{item.login}</td>
+                        <td className="p-6">
+                          <span className="bg-slate-950 border border-slate-800 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-400 uppercase">{item.category}</span>
+                        </td>
+                        <td className="p-6 font-mono text-xs text-slate-400">{item.password}</td>
+                        <td className="p-6 text-center">
+                          <button onClick={() => deleteInventoryItem(item.id)} className="p-3 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"><Trash2 size={20}/></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
+          {view === 'history' && (
+            <div className="space-y-6">
+              <div className="bg-[#0f172a] p-8 rounded-[3rem] border border-slate-800 shadow-2xl">
+                <div className="flex justify-between items-center mb-10">
+                  <h2 className="text-2xl font-black flex items-center gap-4">
+                    <History className="text-indigo-500" size={28} /> سجل عمليات السحب
+                  </h2>
+                  <div className="bg-indigo-600/10 text-indigo-400 px-5 py-2 rounded-2xl text-xs font-black">
+                    إجمالي العمليات: {pullHistory.length}
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  {pullHistory.map((log) => (
+                    <div key={log.id} className="group bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-indigo-500/30 transition-all">
+                      <div className="flex items-center gap-5 w-full md:w-auto">
+                        <div className="bg-slate-900 p-3 rounded-2xl group-hover:bg-indigo-600 transition-colors">
+                          <Clock className="text-indigo-400 group-hover:text-white" size={20} />
+                        </div>
+                        <div>
+                          <p className="font-black text-white text-sm truncate max-w-[200px] md:max-w-xs">{log.login}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[10px] font-black text-slate-500 uppercase">قسم: {log.category}</span>
+                            <span className="text-indigo-500 font-bold text-[10px]">•</span>
+                            <span className="text-[10px] font-black text-indigo-500 uppercase">{log.fullDate}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => deleteHistory(log.id)} className="text-slate-700 hover:text-rose-500 p-2 transition-colors">
+                        <Trash2 size={18}/>
+                      </button>
+                    </div>
+                  ))}
+                  {pullHistory.length === 0 && (
+                    <div className="text-center py-20 text-slate-600 font-black italic">لا توجد عمليات سحب مسجلة حتى الآن</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </main>
+
+        <footer className="mt-20 py-10 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-700">Nabil Locker • Secure History System</p>
+        </footer>
+
+      </div>
     </div>
+  );
+}
 
-    <script>
-        // توحيد مفتاح التخزين لضمان عدم الضياع
-        const STORAGE_KEY = 'NABIL_LOCKER_VAULT_PRO';
-        let activeTab = 'general';
-        let db = { general: [], go: [], work: [] };
+function NavBtn({ active, onClick, icon, label }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-black transition-all ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-slate-500 hover:text-slate-300'}`}
+    >
+      {icon} {label}
+    </button>
+  );
+}
 
-        // 1. القراءة عند تشغيل الموقع
-        window.addEventListener('DOMContentLoaded', () => {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                try {
-                    db = JSON.parse(raw);
-                    console.log("Data loaded successfully");
-                } catch (e) {
-                    console.error("Data corruption, resetting...");
-                    save(); // إعادة تعيين التخزين في حال الخطأ
-                }
-            }
-            refreshUI();
-        });
+function StatCard({ label, count, color, onPull }) {
+  const themes = {
+    indigo: "border-indigo-500/20 text-indigo-400 bg-indigo-500/5",
+    emerald: "border-emerald-500/20 text-emerald-400 bg-emerald-500/5",
+    blue: "border-blue-500/20 text-blue-400 bg-blue-500/5"
+  };
+  return (
+    <div className={`p-8 rounded-[2.5rem] border ${themes[color]} text-center space-y-5 shadow-xl transition-all hover:scale-[1.02]`}>
+      <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{label}</span>
+      <div className="text-5xl font-black text-white tracking-tighter">{count}</div>
+      <button 
+        onClick={onPull}
+        disabled={count === 0}
+        className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase transition-all ${count === 0 ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-white text-slate-900 hover:shadow-2xl hover:bg-slate-100 shadow-white/5'}`}
+      >
+        سحب حساب
+      </button>
+    </div>
+  );
+}
 
-        function changeTab(t) {
-            activeTab = t;
-            const names = { general: 'العام', go: 'اشتراك GO', work: 'مساحة العمل' };
-            document.getElementById('current-tab-name').innerText = names[t];
-            
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.className = "tab-btn py-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold text-sm";
-            });
-            
-            const activeColors = { 
-                general: 'border-indigo-600 bg-indigo-50 text-indigo-700',
-                go: 'border-emerald-600 bg-emerald-50 text-emerald-700',
-                work: 'border-blue-600 bg-blue-50 text-blue-700'
-            };
-            document.getElementById('tab-' + t).className = "tab-btn py-3 rounded-xl border-2 font-bold text-sm " + activeColors[t];
-        }
+function CopyItem({ label, val }) {
+  const copy = () => {
+    const el = document.createElement('textarea');
+    el.value = val;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+  };
+  return (
+    <div className="space-y-2 text-right">
+      <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter px-1">{label}</label>
+      <div className="bg-slate-100 p-5 rounded-2xl flex justify-between items-center group border border-slate-200">
+        <span className="font-mono text-sm truncate pl-3 flex-1">{val}</span>
+        <button onClick={copy} className="text-indigo-600 hover:scale-125 transition-transform"><Copy size={20} /></button>
+      </div>
+    </div>
+  );
+}
 
-        function processInput() {
-            const val = document.getElementById('main-input').value.trim();
-            if (!val) return;
-
-            const lines = val.split('\n');
-            let added = 0;
-            
-            lines.forEach(line => {
-                if (line.includes(';')) {
-                    const [l, p, r, u] = line.split(';');
-                    db[activeTab].push({ login: l, pass: p, recovery: r, url: u });
-                    added++;
-                }
-            });
-
-            if (added > 0) {
-                document.getElementById('main-input').value = '';
-                save();
-                refreshUI();
-                showStatus(`تمت إضافة ${added} حساب بنجاح`);
-            }
-        }
-
-        function pullAccount(cat) {
-            if (db[cat].length === 0) {
-                showStatus("هذا المخزن فارغ!");
-                return;
-            }
-
-            const item = db[cat].shift(); // سحب وحذف
-            
-            // عرض النتائج
-            document.getElementById('display-area').classList.remove('hidden');
-            document.getElementById('out-login').innerText = item.login || '---';
-            document.getElementById('out-pass').innerText = item.pass || '---';
-            document.getElementById('out-recovery').innerText = item.recovery || '---';
-            document.getElementById('out-link').href = item.url || '#';
-
-            save();
-            refreshUI();
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }
-
-        function save() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-        }
-
-        function refreshUI() {
-            document.getElementById('c-general').innerText = db.general.length;
-            document.getElementById('c-go').innerText = db.go.length;
-            document.getElementById('c-work').innerText = db.work.length;
-            document.getElementById('total-count').innerText = db.general.length + db.go.length + db.work.length;
-        }
-
-        function copy(id) {
-            const txt = document.getElementById(id).innerText;
-            const el = document.createElement('textarea');
-            el.value = txt;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            showStatus("تم النسخ!");
-        }
-
-        function showStatus(msg) {
-            const s = document.getElementById('save-status');
-            s.innerText = msg;
-            s.classList.replace('text-slate-400', 'text-indigo-600');
-            setTimeout(() => {
-                s.innerText = "التخزين آمن";
-                s.classList.replace('text-indigo-600', 'text-slate-400');
-            }, 3000);
-        }
-
-        function closeResult() {
-            document.getElementById('display-area').classList.add('hidden');
-        }
-
-        function fullReset() {
-            if (confirm("سيتم حذف كل شيء من نبيل لوكر، هل أنت متأكد؟")) {
-                db = { general: [], go: [], work: [] };
-                save();
-                refreshUI();
-                location.reload();
-            }
-        }
-    </script>
-</body>
-</html>
+function ExternalLink({ size }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+  );
+}
 
