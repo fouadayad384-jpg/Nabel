@@ -1,337 +1,329 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  onAuthStateChanged,
-  signInAnonymously,
-  signInWithCustomToken
-} from 'firebase/auth';
-import { 
-  getFirestore, 
-  doc, 
-  collection, 
-  onSnapshot, 
-  deleteDoc, 
-  addDoc,
-  serverTimestamp,
-  query
-} from 'firebase/firestore';
-import { 
-  ShieldCheck, CheckCircle, RefreshCw, 
-  Copy, PlusCircle, LayoutDashboard, 
-  List, Trash2, History, Clock, XCircle, Search, ExternalLink
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نبيل لوكر - النسخة الاحترافية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #030712; color: #f8fafc; overflow-x: hidden; }
+        .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.05); }
+        .nav-active { background: #4f46e5; color: white; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); }
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 12px 24px; border-radius: 16px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .view-animate { animation: fadeIn 0.4s ease forwards; }
+    </style>
+</head>
+<body class="pb-10 min-h-screen">
 
-// --- إعدادات Firebase ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'nabil-locker-v12';
+    <!-- Toast Notification -->
+    <div id="toast" class="glass border-indigo-500/50 text-white font-bold text-sm"></div>
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [inventories, setInventories] = useState({ general: [], go: [], work: [] });
-  const [allData, setAllData] = useState([]);
-  const [pullHistory, setPullHistory] = useState([]);
-  const [lastPulled, setLastPulled] = useState(null);
-  const [view, setView] = useState('main'); // main, manage, history
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  // 1. تسجيل الدخول التلقائي
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) { console.error("Auth Error:", e); }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 2. مزامنة البيانات الحية
-  useEffect(() => {
-    if (!user) return;
-    setIsSyncing(true);
-
-    // مزامنة المخزون
-    const invRef = collection(db, 'artifacts', appId, 'public', 'data', 'inventory');
-    const unsubInv = onSnapshot(invRef, (snap) => {
-      const grouped = { general: [], go: [], work: [] };
-      const flat = [];
-      snap.docs.forEach(d => {
-        const item = { id: d.id, ...d.data() };
-        if (grouped[item.category]) grouped[item.category].push(item);
-        flat.push(item);
-      });
-      setInventories(grouped);
-      setAllData(flat);
-      setIsSyncing(false);
-    }, (err) => console.error("Sync Error:", err));
-
-    // مزامنة السجلات
-    const historyRef = collection(db, 'artifacts', appId, 'public', 'data', 'history');
-    const unsubHistory = onSnapshot(historyRef, (snap) => {
-      const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-      setPullHistory(logs);
-    });
-
-    return () => { unsubInv(); unsubHistory(); };
-  }, [user]);
-
-  // --- الوظائف الأساسية ---
-  
-  const handlePull = async (cat) => {
-    const target = inventories[cat][0];
-    if (!target) return;
-    try {
-      setLastPulled(target);
-      // إضافة للسجل مع الوقت الدقيق
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
-        login: target.login,
-        category: target.category,
-        timestamp: serverTimestamp(),
-        fullDate: new Date().toLocaleString('ar-EG', { hour12: true })
-      });
-      // حذف من المخزون
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', target.id));
-    } catch (e) { console.error(e); }
-  };
-
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    const raw = e.target.raw.value.trim();
-    const cat = e.target.category.value;
-    if (!raw) return;
-
-    try {
-      const lines = raw.split('\n');
-      for (let line of lines) {
-        if (!line.trim()) continue;
-        // دعم : و ;
-        const parts = line.split(/[;:]/);
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
-          login: parts[0]?.trim() || '',
-          password: parts[1]?.trim() || '---',
-          category: cat,
-          createdAt: serverTimestamp()
-        });
-      }
-      e.target.reset();
-      alert("تم الرفع بنجاح");
-    } catch (err) { alert("خطأ في الرفع"); }
-  };
-
-  const handleDeleteItem = async (id) => {
-    if (!window.confirm("هل تريد حذف هذا الحساب نهائياً؟")) return;
-    try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', id));
-    } catch (e) { console.error(e); }
-  };
-
-  if (loading) return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-indigo-500 gap-4">
-      <RefreshCw className="animate-spin" size={40} />
-      <p className="font-black animate-pulse">جاري الاتصال بالسحابة...</p>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 p-4 md:p-8" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-8">
-        
-        {/* Header */}
-        <header className="bg-slate-900/80 backdrop-blur-xl sticky top-4 z-50 p-6 rounded-[2rem] border border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl">
-          <div className="flex items-center gap-4">
-            <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-500/20">
-              <ShieldCheck className="text-white" size={28} />
+    <div class="max-w-4xl mx-auto px-4 pt-6">
+        <!-- Header -->
+        <header class="glass sticky top-4 z-50 p-4 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl mb-8">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-600/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tighter italic">NABIL LOCKER</h1>
+                    <div class="flex items-center gap-2">
+                        <span id="sync-dot" class="w-2 h-2 rounded-full bg-rose-600"></span>
+                        <span id="sync-text" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">انتظار السحابة..</span>
+                    </div>
+                </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-black italic text-white">نبيل لوكر</h1>
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">متصل بالسحابة</span>
-              </div>
-            </div>
-          </div>
-
-          <nav className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5">
-            <NavTab active={view === 'main'} onClick={() => setView('main')} icon={<LayoutDashboard size={16}/>} label="الرئيسية" />
-            <NavTab active={view === 'manage'} onClick={() => setView('manage')} icon={<List size={16}/>} label="الإدارة" />
-            <NavTab active={view === 'history'} onClick={() => setView('history')} icon={<History size={16}/>} label="السجلات" />
-          </nav>
+            <nav class="flex bg-black/40 p-1.5 rounded-2xl border border-white/5">
+                <button onclick="showView('main')" id="tab-main" class="nav-active px-6 py-2 rounded-xl text-xs font-black transition-all">الرئيسية</button>
+                <button onclick="showView('manage')" id="tab-manage" class="px-6 py-2 rounded-xl text-xs font-black text-slate-500 transition-all">المخزن</button>
+                <button onclick="showView('history')" id="tab-history" class="px-6 py-2 rounded-xl text-xs font-black text-slate-500 transition-all">السجلات</button>
+            </nav>
         </header>
 
-        {/* Views */}
-        <div className="animate-in fade-in duration-500">
-          
-          {view === 'main' && (
-            <div className="grid grid-cols-1 gap-8 max-w-2xl mx-auto">
-              {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatBox label="المخزن العام" count={inventories.general.length} color="indigo" onPull={() => handlePull('general')} />
-                <StatBox label="اشتراك GO" count={inventories.go.length} color="emerald" onPull={() => handlePull('go')} />
-                <StatBox label="مساحة العمل" count={inventories.work.length} color="blue" onPull={() => handlePull('work')} />
-              </div>
-
-              {/* Pull Result */}
-              {lastPulled && (
-                <div className="bg-white text-slate-900 p-8 rounded-[2.5rem] shadow-2xl border-t-[10px] border-indigo-600 animate-in zoom-in-95">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-black text-xl text-indigo-800">تفاصيل الحساب</h3>
-                    <button onClick={() => setLastPulled(null)}><XCircle className="text-slate-300 hover:text-rose-500" size={24}/></button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <CopyBox label="الحساب" value={lastPulled.login} />
-                    <CopyBox label="كلمة المرور" value={lastPulled.password} />
-                  </div>
+        <!-- Main View -->
+        <div id="view-main" class="view-animate space-y-6">
+            <!-- Counters -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="glass p-6 rounded-[2.5rem] text-center border-indigo-500/10 hover:border-indigo-500/30 transition-all">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">المخزن العام</span>
+                    <div id="cnt-general" class="text-5xl font-black my-3">0</div>
+                    <button onclick="pull('general')" class="w-full py-3 bg-white text-slate-900 rounded-2xl font-black text-xs active:scale-95 transition-all">سحب حساب</button>
                 </div>
-              )}
-
-              {/* Upload Form */}
-              <div className="bg-slate-900/50 p-8 rounded-[2.5rem] border border-white/5 space-y-6">
-                <h3 className="font-black text-lg flex items-center gap-2">
-                  <PlusCircle className="text-indigo-500" size={20}/> رفع حسابات جديدة
-                </h3>
-                <form onSubmit={handleAdd} className="space-y-4">
-                  <select name="category" className="w-full p-4 bg-black/40 border border-white/10 rounded-2xl outline-none font-black text-indigo-400">
-                    <option value="general">المخزن العام</option>
-                    <option value="go">اشتراك GO</option>
-                    <option value="work">مساحة عمل</option>
-                  </select>
-                  <textarea 
-                    name="raw" 
-                    required
-                    className="w-full h-32 p-5 bg-black/40 border border-white/10 rounded-2xl font-mono text-xs outline-none focus:border-indigo-500" 
-                    placeholder="يمكنك الإدخال بصيغة user:pass أو user;pass"></textarea>
-                  <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-indigo-500/10">رفع فوري</button>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {view === 'manage' && (
-            <div className="bg-slate-900/50 rounded-[2.5rem] border border-white/5 overflow-hidden">
-              <div className="p-8 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="text-xl font-black">إدارة المخزون الحالية</h2>
-                <div className="relative w-full md:w-64">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16}/>
-                  <input 
-                    type="text" 
-                    placeholder="بحث..." 
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-black/40 p-3 pl-10 rounded-xl border border-white/10 text-xs outline-none"
-                  />
+                <div class="glass p-6 rounded-[2.5rem] text-center border-emerald-500/10 hover:border-emerald-500/30 transition-all">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">اشتراك GO</span>
+                    <div id="cnt-go" class="text-5xl font-black my-3 text-emerald-400">0</div>
+                    <button onclick="pull('go')" class="w-full py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs active:scale-95 transition-all shadow-lg shadow-emerald-600/20">سحب حساب</button>
                 </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-right">
-                  <thead className="bg-black/20 text-slate-500 text-[10px] uppercase font-black">
-                    <tr>
-                      <th className="p-5">الحساب</th>
-                      <th className="p-5">القسم</th>
-                      <th className="p-5">الباسورد</th>
-                      <th className="p-5 text-center">حذف</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {allData.filter(i => i.login.includes(searchTerm)).map(item => (
-                      <tr key={item.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="p-5 font-bold text-sm">{item.login}</td>
-                        <td className="p-5 text-xs text-indigo-400">{item.category}</td>
-                        <td className="p-5 font-mono text-xs opacity-50">{item.password}</td>
-                        <td className="p-5 text-center">
-                          <button onClick={() => handleDeleteItem(item.id)} className="p-2 text-slate-600 hover:text-rose-500 transition-all"><Trash2 size={18}/></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                <div class="glass p-6 rounded-[2.5rem] text-center border-blue-500/10 hover:border-blue-500/30 transition-all">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">مساحة عمل</span>
+                    <div id="cnt-work" class="text-5xl font-black my-3 text-blue-400">0</div>
+                    <button onclick="pull('work')" class="w-full py-3 bg-blue-600 text-white rounded-2xl font-black text-xs active:scale-95 transition-all shadow-lg shadow-blue-600/20">سحب حساب</button>
+                </div>
             </div>
-          )}
 
-          {view === 'history' && (
-            <div className="bg-slate-900/50 p-8 rounded-[2.5rem] border border-white/5 space-y-6">
-              <h2 className="text-xl font-black flex items-center gap-3"><Clock className="text-indigo-500"/> سجل السحب بالوقت</h2>
-              <div className="space-y-3">
-                {pullHistory.map(log => (
-                  <div key={log.id} className="bg-black/20 p-5 rounded-2xl border border-white/5 flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-sm">{log.login}</p>
-                      <p className="text-[10px] text-slate-500 mt-1 uppercase">سُحب من: {log.category} • {log.fullDate}</p>
+            <!-- Result Display (Hidden by default) -->
+            <div id="res-card" class="hidden bg-white text-slate-950 p-8 rounded-[3rem] shadow-2xl border-t-[12px] border-indigo-600 animate-bounce-short">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-black text-indigo-900">تم السحب بنجاح! 🎉</h3>
+                    <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="text-slate-300 hover:text-rose-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-100 p-4 rounded-2xl border border-slate-200">
+                        <p class="text-[10px] font-black text-slate-400 mb-1 uppercase">اسم المستخدم</p>
+                        <div class="flex justify-between items-center"><span id="out-user" class="font-mono text-sm font-bold truncate pr-2 text-indigo-900">---</span><button onclick="copy('out-user')" class="text-indigo-600 font-black text-xs hover:underline">نسخ</button></div>
                     </div>
-                    <div className="bg-indigo-500/10 text-indigo-400 p-2 rounded-lg"><History size={16}/></div>
-                  </div>
-                ))}
-              </div>
+                    <div class="bg-slate-100 p-4 rounded-2xl border border-slate-200">
+                        <p class="text-[10px] font-black text-slate-400 mb-1 uppercase">كلمة المرور</p>
+                        <div class="flex justify-between items-center"><span id="out-pass" class="font-mono text-sm font-bold truncate pr-2 text-indigo-900">---</span><button onclick="copy('out-pass')" class="text-indigo-600 font-black text-xs hover:underline">نسخ</button></div>
+                    </div>
+                </div>
             </div>
-          )}
 
+            <!-- Upload Area -->
+            <div class="glass p-8 rounded-[3rem]">
+                <h3 class="text-xl font-black mb-6 flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>إيداع حسابات جديدة</h3>
+                <div class="space-y-4">
+                    <select id="up-cat" class="w-full p-4 bg-black/40 border border-white/10 rounded-2xl font-black text-indigo-400 outline-none focus:border-indigo-500">
+                        <option value="general">المخزن العام</option>
+                        <option value="go">اشتراك GO</option>
+                        <option value="work">مساحة عمل</option>
+                    </select>
+                    <textarea id="up-raw" class="w-full h-40 p-5 bg-black/40 border border-white/10 rounded-[2rem] font-mono text-xs outline-none focus:border-indigo-500" placeholder="user:pass&#10;user;pass"></textarea>
+                    <button onclick="upload()" id="btn-up" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-[2.5rem] font-black text-lg transition-all shadow-xl shadow-indigo-500/20 active:scale-95">بدء الرفع للسحابة</button>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function NavTab({ active, onClick, icon, label }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black transition-all ${active ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
-    >
-      {icon} {label}
-    </button>
-  );
-}
+        <!-- Manage View -->
+        <div id="view-manage" class="hidden view-animate glass rounded-[2.5rem] overflow-hidden">
+            <div class="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center">
+                <h2 class="text-xl font-black">إدارة المخزون الحالية</h2>
+                <input type="text" onkeyup="filterRows(this.value)" placeholder="بحث.." class="bg-black/40 border border-white/10 px-4 py-2 rounded-xl text-xs outline-none">
+            </div>
+            <div class="overflow-x-auto max-h-[600px] custom-scroll">
+                <table class="w-full text-right">
+                    <thead class="bg-black/40 text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                        <tr><th class="p-5">الحساب</th><th class="p-5 text-center">التصنيف</th><th class="p-5 text-center">إجراء</th></tr>
+                    </thead>
+                    <tbody id="manage-body" class="divide-y divide-white/5"></tbody>
+                </table>
+            </div>
+        </div>
 
-function StatBox({ label, count, color, onPull }) {
-  const colors = {
-    indigo: "border-indigo-500/20 text-indigo-400 bg-indigo-500/5",
-    emerald: "border-emerald-500/20 text-emerald-400 bg-emerald-500/5",
-    blue: "border-blue-500/20 text-blue-400 bg-blue-500/5"
-  };
-  return (
-    <div className={`p-6 rounded-[2rem] border ${colors[color]} text-center space-y-4`}>
-      <span className="text-[9px] font-black uppercase opacity-60 tracking-widest">{label}</span>
-      <div className="text-4xl font-black text-white">{count}</div>
-      <button 
-        onClick={onPull}
-        disabled={count === 0}
-        className={`w-full py-3 rounded-xl font-black text-[10px] transition-all ${count === 0 ? 'bg-slate-800 text-slate-600' : 'bg-white text-slate-900 hover:scale-105'}`}
-      >سحب</button>
+        <!-- History View -->
+        <div id="view-history" class="hidden view-animate glass p-8 rounded-[2.5rem]">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black">سجل عمليات السحب</h2>
+                <button onclick="clearHistory()" class="text-[10px] font-black text-rose-500 uppercase hover:underline">تفريغ السجل</button>
+            </div>
+            <div id="history-body" class="space-y-3 max-h-[600px] overflow-y-auto custom-scroll pr-2"></div>
+        </div>
     </div>
-  );
-}
 
-function CopyBox({ label, value }) {
-  const copy = () => {
-    const el = document.createElement('textarea');
-    el.value = value;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-  };
-  return (
-    <div className="space-y-1">
-      <label className="text-[10px] font-black text-slate-400">{label}</label>
-      <div className="bg-slate-100 p-4 rounded-xl flex justify-between border border-slate-200">
-        <span className="font-mono text-sm truncate flex-1">{value}</span>
-        <button onClick={copy} className="text-indigo-600 hover:scale-110 transition-transform"><Copy size={16}/></button>
-      </div>
-    </div>
-  );
-}
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, deleteDoc, onSnapshot, serverTimestamp, writeBatch, query, getDocs } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+
+        // CONFIGURATION
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'nabil-locker-v5-pro';
+        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let inventory = [];
+        let history = [];
+        let isReady = false;
+
+        // AUTH & START
+        async function init() {
+            try {
+                if (token) await signInWithCustomToken(auth, token);
+                else await signInAnonymously(auth);
+            } catch (e) { console.error("Auth Fail", e); }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                isReady = true;
+                document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                document.getElementById('sync-text').innerText = "متصل بالسحابة";
+                syncData();
+            }
+        });
+
+        // SYNC FUNCTIONS
+        function syncData() {
+            // Live Inventory
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), (snap) => {
+                inventory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderInventory();
+            });
+
+            // Live History
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'history'), (snap) => {
+                history = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                renderHistory();
+            });
+        }
+
+        // UI RENDERING
+        function renderInventory() {
+            const counts = { general: 0, go: 0, work: 0 };
+            inventory.forEach(i => counts[i.category]++);
+            
+            document.getElementById('cnt-general').innerText = counts.general;
+            document.getElementById('cnt-go').innerText = counts.go;
+            document.getElementById('cnt-work').innerText = counts.work;
+
+            document.getElementById('manage-body').innerHTML = inventory.map(i => `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="p-5 font-bold text-sm text-white">${i.login}<div class="text-[9px] text-slate-600 font-mono">${i.password}</div></td>
+                    <td class="p-5 text-center"><span class="text-[10px] font-black text-indigo-400 border border-indigo-500/20 px-2 py-1 rounded-lg">${i.category.toUpperCase()}</span></td>
+                    <td class="p-5 text-center"><button onclick="window.deleteItem('${i.id}')" class="text-rose-500 p-2 hover:bg-rose-500/10 rounded-xl transition-all"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderHistory() {
+            document.getElementById('history-body').innerHTML = history.map(h => `
+                <div class="glass p-4 rounded-2xl flex justify-between items-center group">
+                    <div>
+                        <p class="font-bold text-sm text-indigo-100">${h.login}</p>
+                        <p class="text-[9px] text-slate-500 mt-1 font-black uppercase tracking-widest">سحب من ${h.category} • ${h.date}</p>
+                    </div>
+                    <div class="text-emerald-500 opacity-30 group-hover:opacity-100 transition-opacity">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // CORE LOGIC
+        window.upload = async () => {
+            if (!isReady) return notify("انتظر الاتصال بالسحابة..");
+            const raw = document.getElementById('up-raw').value.trim();
+            const cat = document.getElementById('up-cat').value;
+            if(!raw) return notify("لا يوجد بيانات للرفع");
+
+            const btn = document.getElementById('btn-up');
+            btn.disabled = true; btn.innerText = "جاري الحفظ في السحابة...";
+
+            try {
+                const lines = raw.split('\n');
+                let batch = writeBatch(db);
+                let count = 0;
+
+                for (let line of lines) {
+                    if (!line.trim()) continue;
+                    const sep = line.includes(';') ? ';' : ':';
+                    const parts = line.split(sep);
+                    
+                    const ref = doc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'));
+                    batch.set(ref, {
+                        login: parts[0]?.trim(),
+                        password: (parts[1] || '').trim(),
+                        category: cat,
+                        timestamp: serverTimestamp()
+                    });
+                    
+                    count++;
+                    if (count % 450 === 0) { await batch.commit(); batch = writeBatch(db); }
+                }
+                await batch.commit();
+                document.getElementById('up-raw').value = '';
+                notify(`تم إيداع ${count} حساب بنجاح`);
+            } catch (e) {
+                notify("خطأ صلاحيات: " + e.code);
+            } finally {
+                btn.disabled = false; btn.innerText = "بدء الرفع للسحابة";
+            }
+        };
+
+        window.pull = async (cat) => {
+            const target = inventory.find(i => i.category === cat);
+            if (!target) return notify("عذراً، هذا القسم فارغ");
+
+            document.getElementById('out-user').innerText = target.login;
+            document.getElementById('out-pass').innerText = target.password;
+            document.getElementById('res-card').classList.remove('hidden');
+
+            try {
+                // إضافة للسجل
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
+                    login: target.login,
+                    category: target.category,
+                    date: new Date().toLocaleString('ar-EG'),
+                    timestamp: serverTimestamp()
+                });
+                // الحذف من المخزن
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', target.id));
+                notify("تم السحب وتحديث السجل");
+            } catch (e) { notify("فشل إتمام السحب"); }
+        };
+
+        window.deleteItem = async (id) => {
+            if(confirm("هل أنت متأكد من الحذف النهائي؟")) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', id));
+                notify("تم الحذف من السحابة");
+            }
+        };
+
+        window.clearHistory = async () => {
+            if(confirm("سيتم مسح سجل العمليات بالكامل؟")) {
+                notify("جاري المسح..");
+                const q = collection(db, 'artifacts', appId, 'public', 'data', 'history');
+                const snap = await getDocs(q);
+                const batch = writeBatch(db);
+                snap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                notify("تم تنظيف السجل");
+            }
+        }
+
+        // HELPER FUNCTIONS
+        window.showView = (v) => {
+            ['main', 'manage', 'history'].forEach(x => {
+                document.getElementById('view-'+x).classList.add('hidden');
+                document.getElementById('tab-'+x).classList.remove('nav-active');
+                document.getElementById('tab-'+x).classList.add('text-slate-500');
+            });
+            document.getElementById('view-'+v).classList.remove('hidden');
+            document.getElementById('tab-'+v).classList.add('nav-active');
+            document.getElementById('tab-'+v).classList.remove('text-slate-500');
+        };
+
+        window.copy = (id) => {
+            const text = document.getElementById(id).innerText;
+            const el = document.createElement('textarea');
+            el.value = text; document.body.appendChild(el);
+            el.select(); document.execCommand('copy');
+            document.body.removeChild(el);
+            notify("تم النسخ للحافظة ✅");
+        };
+
+        window.filterRows = (q) => {
+            const query = q.toLowerCase();
+            const rows = document.querySelectorAll('#manage-body tr');
+            rows.forEach(r => r.style.display = r.innerText.toLowerCase().includes(query) ? '' : 'none');
+        };
+
+        function notify(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
 
