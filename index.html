@@ -10,10 +10,9 @@
     <style>
         body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
         .active-nav { color: #2563eb; background-color: #eff6ff; border-radius: 1rem; }
-        input, button, select, textarea { outline: none !important; }
-        /* تحسين استجابة اللمس */
         .touch-button { transition: transform 0.1s active; }
         .touch-button:active { transform: scale(0.95); }
+        .stock-badge { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
@@ -24,10 +23,10 @@
             <div class="w-full max-w-sm">
                 <div class="text-center mb-8">
                     <div class="inline-flex p-4 bg-blue-600 text-white rounded-3xl shadow-xl mb-4">
-                        <i data-lucide="lock" class="w-10 h-10"></i>
+                        <i data-lucide="package-check" class="w-10 h-10"></i>
                     </div>
                     <h1 class="text-3xl font-black text-slate-800">مخزن الموردين</h1>
-                    <p id="auth-subtitle" class="text-slate-500 mt-2">سجل دخولك للبدء</p>
+                    <p id="auth-subtitle" class="text-slate-500 mt-2">سجل دخولك لإدارة الستوك</p>
                 </div>
 
                 <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100">
@@ -50,7 +49,6 @@
         <!-- Dashboard -->
         <div id="dashboard" class="hidden">
             <header class="bg-white px-6 py-4 flex justify-between items-center border-b sticky top-0 z-50 shadow-sm">
-                <!-- تم إصلاح زر تسجيل الخروج هنا عبر إضافة onclick مباشرة -->
                 <button onclick="logoutNow()" class="p-2 text-red-500 bg-red-50 rounded-xl active:scale-90 transition flex items-center justify-center">
                     <i data-lucide="log-out" class="w-6 h-6"></i>
                 </button>
@@ -64,7 +62,7 @@
             </header>
 
             <main id="view-container" class="p-4 max-w-lg mx-auto pb-24">
-                <!-- المحتوى يتم حقنه هنا -->
+                <!-- Content Injected Here -->
             </main>
 
             <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t px-8 py-3 flex justify-around items-center z-40 shadow-lg">
@@ -85,17 +83,18 @@
     <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold opacity-0 transition-all z-[100] pointer-events-none shadow-2xl border border-slate-700"></div>
 
     <script>
-        // --- إدارة الحالة ---
+        // --- State Management ---
         let state = {
             user: null,
             vendors: JSON.parse(localStorage.getItem('v_db')) || [{id:'admin', username:'admin', password:'admin', name:'المدير', balance: 9999, role:'admin'}],
-            inventory: JSON.parse(localStorage.getItem('i_db')) || [],
+            // New Category-based Stock System
+            categories: JSON.parse(localStorage.getItem('cat_db')) || [],
             logs: JSON.parse(localStorage.getItem('l_db')) || []
         };
 
         const save = () => {
             localStorage.setItem('v_db', JSON.stringify(state.vendors));
-            localStorage.setItem('i_db', JSON.stringify(state.inventory));
+            localStorage.setItem('cat_db', JSON.stringify(state.categories));
             localStorage.setItem('l_db', JSON.stringify(state.logs));
         };
 
@@ -107,19 +106,15 @@
             setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 3000);
         };
 
-        // --- وظيفة تسجيل الخروج (مصلحة) ---
         window.logoutNow = function() {
             if(confirm("هل تريد تسجيل الخروج؟")) {
                 state.user = null;
                 document.getElementById('dashboard').classList.add('hidden');
                 document.getElementById('auth-screen').classList.remove('hidden');
-                // تصفير مدخلات تسجيل الدخول
-                document.getElementById('username').value = '';
-                document.getElementById('password').value = '';
             }
         };
 
-        // --- منطق المصادقة ---
+        // --- Auth ---
         let isRegMode = false;
         document.getElementById('toggle-auth').onclick = () => {
             isRegMode = !isRegMode;
@@ -140,7 +135,7 @@
                 if(state.vendors.find(v => v.username === u)) return notify("اليوزر مستخدم بالفعل");
                 state.vendors.push({id:Date.now(), username:u, password:p, name:n, balance:0, role:'vendor'});
                 save();
-                notify("تم التسجيل! يمكنك الدخول الآن");
+                notify("تم التسجيل!");
                 document.getElementById('toggle-auth').click();
             } else {
                 const found = state.vendors.find(v => v.username === u && v.password === p);
@@ -150,12 +145,12 @@
                     document.getElementById('dashboard').classList.remove('hidden');
                     initDashboard();
                 } else {
-                    notify("خطأ في اليوزر أو الباسورد");
+                    notify("خطأ في البيانات");
                 }
             }
         };
 
-        // --- لوحة التحكم ---
+        // --- Logic ---
         function initDashboard() {
             document.getElementById('user-display-name').innerText = state.user.name;
             document.getElementById('user-role-badge').innerText = state.user.role === 'admin' ? 'مدير' : 'مورد';
@@ -181,57 +176,40 @@
             lucide.createIcons();
         }
 
+        // --- Venders Home ---
         function renderHome(container) {
             let html = `
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-black text-slate-800">الحسابات</h2>
-                    <a href="https://t.me/aboarenx" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg">
+                    <h2 class="text-xl font-black text-slate-800 tracking-tight">الأصناف المتوفرة</h2>
+                    <a href="https://t.me/aboarenx" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg active:scale-95 transition">
                         <i data-lucide="send" class="w-4 h-4"></i> شحن
                     </a>
                 </div>
             `;
 
-            const available = state.inventory.filter(i => i.status === 'available');
-            if (available.length === 0) {
-                html += `<div class="bg-white p-10 rounded-[2rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold">المخزن فارغ</div>`;
+            if (state.categories.length === 0) {
+                html += `<div class="bg-white p-10 rounded-[2rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold">لا توجد أصناف حالياً</div>`;
             } else {
-                available.forEach(item => {
+                state.categories.forEach(cat => {
+                    const count = cat.items.length;
                     html += `
-                        <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-4">
-                                <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl"><i data-lucide="key"></i></div>
-                                <div>
-                                    <h4 class="font-black text-slate-800">${item.type}</h4>
-                                    <p class="text-blue-600 font-black text-sm">$${item.price}</p>
+                        <div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm mb-4 relative overflow-hidden group">
+                            <div class="flex items-center justify-between relative z-10">
+                                <div class="flex items-center gap-4">
+                                    <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl"><i data-lucide="box"></i></div>
+                                    <div>
+                                        <h4 class="font-black text-slate-800">${cat.name}</h4>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-blue-600 font-black text-sm">$${cat.price}</span>
+                                            <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500 font-bold">متوفر: ${count}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <button onclick="handlePurchase('${item.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm touch-button">شراء</button>
-                        </div>
-                    `;
-                });
-            }
-            container.innerHTML = html;
-        }
-
-        function renderHistory(container) {
-            const myLogs = state.user.role === 'admin' ? state.logs : state.logs.filter(l => l.buyerId === state.user.id);
-            let html = `<h2 class="text-xl font-black mb-6">مشترياتي</h2>`;
-            
-            if(myLogs.length === 0) {
-                html += `<p class="text-center py-10 text-slate-400">لا توجد عمليات</p>`;
-            } else {
-                myLogs.forEach(l => {
-                    html += `
-                        <div class="bg-white p-5 rounded-[2rem] border border-slate-100 mb-4">
-                            <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-2">
-                                <span>${l.date}</span>
-                                <span class="text-green-600">$${l.price}</span>
-                            </div>
-                            <h4 class="font-black mb-3">${l.type}</h4>
-                            <div class="bg-slate-50 p-4 rounded-2xl text-xs space-y-2 border border-dashed border-slate-200">
-                                <p><strong>البيانات:</strong> <span class="text-blue-700 font-mono select-all">${l.details}</span></p>
-                                ${l.backup ? `<p><strong>احتياطي:</strong> ${l.backup}</p>` : ''}
-                                ${l.notes ? `<p><strong>ملاحظة:</strong> ${l.notes}</p>` : ''}
+                                <button onclick="handlePurchase('${cat.id}')" 
+                                        ${count === 0 ? 'disabled' : ''} 
+                                        class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold text-sm touch-button ${count === 0 ? 'opacity-30 cursor-not-allowed' : ''}">
+                                    ${count === 0 ? 'نفذ' : 'شراء'}
+                                </button>
                             </div>
                         </div>
                     `;
@@ -240,32 +218,47 @@
             container.innerHTML = html;
         }
 
+        // --- Admin Controls ---
         function renderAdmin(container) {
             container.innerHTML = `
                 <div class="space-y-6">
-                    <h2 class="text-2xl font-black">الإدارة</h2>
+                    <h2 class="text-2xl font-black">لوحة الإدارة</h2>
                     
-                    <div class="bg-white p-6 rounded-[2rem] shadow-sm border">
-                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="plus-circle" class="text-blue-600"></i> إضافة حساب</h3>
+                    <!-- Create Category -->
+                    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-plus" class="text-blue-600"></i> إنشاء صنف جديد</h3>
                         <div class="space-y-3">
-                            <input id="in-type" type="text" placeholder="اسم الخدمة" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
-                            <input id="in-details" type="text" placeholder="يوزر:باس" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 text-left">
-                            <input id="in-backup" type="text" placeholder="بريد احتياطي" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 text-left">
-                            <textarea id="in-notes" placeholder="ملاحظات" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 h-20"></textarea>
-                            <input id="in-price" type="number" placeholder="السعر $" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
-                            <button onclick="addItem()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold touch-button">إضافة للمخزن</button>
+                            <input id="cat-name" type="text" placeholder="اسم الصنف (مثلاً ChatGPT سنوي)" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
+                            <input id="cat-price" type="number" placeholder="السعر $" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
+                            <button onclick="createCategory()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold touch-button">إنشاء الصنف</button>
                         </div>
                     </div>
 
-                    <div class="bg-white p-6 rounded-[2rem] shadow-sm border">
-                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="wallet" class="text-green-600"></i> شحن رصيد</h3>
+                    <!-- Add Stock to Category -->
+                    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="plus-circle" class="text-green-600"></i> إضافة ستوك (حسابات)</h3>
+                        <div class="space-y-3">
+                            <select id="stock-cat-id" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
+                                <option value="">اختر الصنف</option>
+                                ${state.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                            </select>
+                            <input id="stock-details" type="text" placeholder="بيانات الحساب (يوزر:باس)" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 text-left">
+                            <input id="stock-backup" type="text" placeholder="بريد احتياطي (اختياري)" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 text-left">
+                            <textarea id="stock-notes" placeholder="ملاحظات الحساب" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 h-20"></textarea>
+                            <button onclick="addStock()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold touch-button">إضافة للحسابات</button>
+                        </div>
+                    </div>
+
+                    <!-- Recharge -->
+                    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="wallet" class="text-orange-600"></i> شحن رصيد مورد</h3>
                         <div class="space-y-3">
                             <select id="sel-vendor" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
                                 <option value="">اختر المورد</option>
                                 ${state.vendors.filter(v=>v.role!=='admin').map(v=>`<option value="${v.id}">${v.name} ($${v.balance})</option>`)}
                             </select>
                             <input id="in-recharge" type="number" placeholder="المبلغ" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
-                            <button onclick="rechargeVendor()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold touch-button">تأكيد الشحن</button>
+                            <button onclick="rechargeVendor()" class="w-full bg-orange-600 text-white p-4 rounded-2xl font-bold touch-button">تأكيد الشحن</button>
                         </div>
                     </div>
                 </div>
@@ -273,57 +266,93 @@
             lucide.createIcons();
         }
 
-        // --- الإجراءات ---
-        window.handlePurchase = (id) => {
-            const item = state.inventory.find(i => i.id == id);
-            if(!item) return;
-
-            if(state.user.balance < item.price) {
-                return notify("رصيدك غير كافٍ");
+        function renderHistory(container) {
+            const myLogs = state.user.role === 'admin' ? state.logs : state.logs.filter(l => l.buyerId === state.user.id);
+            let html = `<h2 class="text-xl font-black mb-6">مشترياتي</h2>`;
+            
+            if(myLogs.length === 0) {
+                html += `<p class="text-center py-10 text-slate-400 font-bold">لا توجد عمليات سابقة</p>`;
+            } else {
+                myLogs.forEach(l => {
+                    html += `
+                        <div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 mb-4 shadow-sm">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-tighter">
+                                <span>${l.date}</span>
+                                <span class="text-green-600">$${l.price}</span>
+                            </div>
+                            <h4 class="font-black mb-3 text-slate-800">${l.type}</h4>
+                            <div class="bg-slate-50 p-5 rounded-3xl text-xs space-y-3 border border-dashed border-slate-200">
+                                <div><p class="text-slate-400 mb-1">بيانات الحساب:</p><p class="text-blue-700 font-mono select-all font-bold text-sm">${l.details}</p></div>
+                                ${l.backup ? `<div><p class="text-slate-400 mb-1">احتياطي:</p><p class="font-bold">${l.backup}</p></div>` : ''}
+                                ${l.notes ? `<div><p class="text-slate-400 mb-1">ملاحظة:</p><p class="italic text-slate-600">${l.notes}</p></div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
             }
+            container.innerHTML = html;
+        }
 
-            if(confirm(`هل تريد شراء ${item.type} بـ $${item.price}؟`)) {
-                state.user.balance -= item.price;
-                item.status = 'sold';
-                item.buyerId = state.user.id;
+        // --- Actions ---
+        window.createCategory = () => {
+            const name = document.getElementById('cat-name').value.trim();
+            const price = parseFloat(document.getElementById('cat-price').value);
+            if(!name || isNaN(price)) return notify("أكمل بيانات الصنف");
+            
+            state.categories.push({ id: Date.now(), name, price, items: [] });
+            save();
+            notify("تم إنشاء الصنف");
+            renderAdmin(document.getElementById('view-container'));
+        };
 
+        window.addStock = () => {
+            const catId = document.getElementById('stock-cat-id').value;
+            const details = document.getElementById('stock-details').value.trim();
+            const backup = document.getElementById('stock-backup').value.trim();
+            const notes = document.getElementById('stock-notes').value.trim();
+
+            if(!catId || !details) return notify("أكمل بيانات الحساب");
+
+            const cat = state.categories.find(c => c.id == catId);
+            cat.items.push({ id: Date.now(), details, backup, notes });
+            save();
+            notify(`تمت إضافة الستوك لـ ${cat.name}`);
+            renderAdmin(document.getElementById('view-container'));
+        };
+
+        window.handlePurchase = (catId) => {
+            const cat = state.categories.find(c => c.id == catId);
+            if(!cat || cat.items.length === 0) return notify("نفذت الكمية");
+            if(state.user.balance < cat.price) return notify("رصيدك غير كافٍ");
+
+            if(confirm(`تأكيد شراء حساب ${cat.name} بـ $${cat.price}؟`)) {
+                // Get one item from stock (FIFO)
+                const soldItem = cat.items.shift();
+                
+                state.user.balance -= cat.price;
+                
                 state.logs.unshift({
                     id: Date.now(),
                     buyerId: state.user.id,
-                    type: item.type,
-                    price: item.price,
-                    details: item.details,
-                    backup: item.backup,
-                    notes: item.notes,
+                    type: cat.name,
+                    price: cat.price,
+                    details: soldItem.details,
+                    backup: soldItem.backup,
+                    notes: soldItem.notes,
                     date: new Date().toLocaleString('ar-EG')
                 });
 
                 save();
                 updateBalance();
                 renderHome(document.getElementById('view-container'));
-                notify("تم الشراء! راجع سجل المشتريات");
+                notify("تم الشراء بنجاح!");
             }
-        };
-
-        window.addItem = () => {
-            const type = document.getElementById('in-type').value;
-            const details = document.getElementById('in-details').value;
-            const price = parseFloat(document.getElementById('in-price').value);
-            const backup = document.getElementById('in-backup').value;
-            const notes = document.getElementById('in-notes').value;
-
-            if(!type || !details || isNaN(price)) return notify("أكمل البيانات");
-
-            state.inventory.push({ id: Date.now(), type, details, price, backup, notes, status: 'available' });
-            save();
-            notify("تمت الإضافة");
-            renderAdmin(document.getElementById('view-container'));
         };
 
         window.rechargeVendor = () => {
             const vId = document.getElementById('sel-vendor').value;
             const amt = parseFloat(document.getElementById('in-recharge').value);
-            if(!vId || isNaN(amt)) return notify("بيانات الشحن ناقصة");
+            if(!vId || isNaN(amt)) return notify("بيانات ناقصة");
 
             const vIndex = state.vendors.findIndex(v => v.id == vId);
             state.vendors[vIndex].balance += amt;
@@ -332,7 +361,7 @@
             renderAdmin(document.getElementById('view-container'));
         };
 
-        // تشغيل الأيقونات
+        // Initialize Icons
         lucide.createIcons();
     </script>
 </body>
