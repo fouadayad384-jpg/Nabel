@@ -2,131 +2,339 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nabil Locker Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مخزن الحسابات | @aboarenx</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: 'Tajawal', sans-serif; background-color: #030712; color: #f8fafc; }
-        .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        .nav-active { background: #4f46e5; color: white; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); }
-        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; display: none; padding: 12px 24px; border-radius: 16px; background: rgba(79, 70, 229, 0.9); font-weight: bold; border: 1px solid white; }
+        body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .active-nav { color: #2563eb; background-color: #eff6ff; border-radius: 1rem; }
+        input, button, select, textarea { outline: none !important; }
+        /* تحسين استجابة اللمس */
+        .touch-button { transition: transform 0.1s active; }
+        .touch-button:active { transform: scale(0.95); }
     </style>
 </head>
-<body class="min-h-screen pb-10">
-    <div id="toast"></div>
-    <div class="max-w-4xl mx-auto px-4 pt-6">
-        <header class="glass sticky top-4 z-50 p-4 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl mb-8">
-            <div class="flex items-center gap-3">
-                <div class="bg-indigo-600 p-2.5 rounded-2xl"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div>
-                <div><h1 class="text-xl font-black italic uppercase">Nabil Locker</h1><div class="flex items-center gap-2"><span id="sync-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span class="text-[10px] text-slate-500 font-bold uppercase">متصل بالسحابة</span></div></div>
-            </div>
-            <nav class="flex bg-black/40 p-1.5 rounded-2xl"><button onclick="showView('main')" id="tab-main" class="nav-active px-6 py-2 rounded-xl text-xs font-black">الرئيسية</button><button onclick="showView('manage')" id="tab-manage" class="px-6 py-2 rounded-xl text-xs font-black text-slate-500">المخزن</button></nav>
-        </header>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
 
-        <main id="view-main" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass p-6 rounded-[2.5rem] text-center"><span>العام</span><div id="cnt-general" class="text-4xl font-black my-2">0</div><button onclick="pull('general')" class="w-full py-2 bg-white text-black rounded-xl font-black text-xs">سحب</button></div>
-                <div class="glass p-6 rounded-[2.5rem] text-center border-emerald-500/20"><span>GO</span><div id="cnt-go" class="text-4xl font-black my-2 text-emerald-400">0</div><button onclick="pull('go')" class="w-full py-2 bg-emerald-600 rounded-xl font-black text-xs">سحب</button></div>
-                <div class="glass p-6 rounded-[2.5rem] text-center border-blue-500/20"><span>WORK</span><div id="cnt-work" class="text-4xl font-black my-2 text-blue-400">0</div><button onclick="pull('work')" class="w-full py-2 bg-blue-600 rounded-xl font-black text-xs">سحب</button></div>
-            </div>
-
-            <div id="res-card" class="hidden bg-white text-slate-900 p-8 rounded-[3rem] shadow-2xl border-t-[10px] border-indigo-600">
-                <div class="flex justify-between items-center mb-4"><h3 class="font-black">تم السحب!</h3><button onclick="this.parentElement.parentElement.classList.add('hidden')">✕</button></div>
-                <div class="grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div class="bg-slate-100 p-3 rounded-lg"><p class="text-[8px] text-slate-400">USER</p><span id="out-user"></span></div>
-                    <div class="bg-slate-100 p-3 rounded-lg"><p class="text-[8px] text-slate-400">PASS</p><span id="out-pass"></span></div>
+    <div id="app">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="min-h-screen flex items-center justify-center p-6">
+            <div class="w-full max-w-sm">
+                <div class="text-center mb-8">
+                    <div class="inline-flex p-4 bg-blue-600 text-white rounded-3xl shadow-xl mb-4">
+                        <i data-lucide="lock" class="w-10 h-10"></i>
+                    </div>
+                    <h1 class="text-3xl font-black text-slate-800">مخزن الموردين</h1>
+                    <p id="auth-subtitle" class="text-slate-500 mt-2">سجل دخولك للبدء</p>
                 </div>
-            </div>
 
-            <div class="glass p-8 rounded-[3rem] space-y-4">
-                <select id="up-cat" class="w-full p-4 bg-black/40 border border-white/10 rounded-2xl font-black text-indigo-400 outline-none"><option value="general">المخزن العام</option><option value="go">اشتراك GO</option><option value="work">مساحة عمل</option></select>
-                <textarea id="up-raw" class="w-full h-32 p-4 bg-black/40 border border-white/10 rounded-2xl font-mono text-xs outline-none" placeholder="user:pass"></textarea>
-                <button onclick="upload()" id="btn-up" class="w-full bg-indigo-600 py-4 rounded-2xl font-black">رفع للسحابة</button>
+                <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100">
+                    <form id="auth-form" class="space-y-4">
+                        <div id="reg-fields" class="hidden space-y-4">
+                            <input type="text" id="reg-name" placeholder="الاسم الكامل" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 transition">
+                        </div>
+                        <input type="text" id="username" placeholder="اسم المستخدم" required class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 transition text-left">
+                        <input type="password" id="password" placeholder="كلمة المرور" required class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 transition text-left">
+                        <button type="submit" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 active:scale-95">دخول</button>
+                    </form>
+                </div>
+                <button id="toggle-auth" class="w-full mt-6 py-2 text-blue-600 font-bold flex items-center justify-center gap-2">
+                    <i data-lucide="user-plus" class="w-5 h-5"></i>
+                    <span id="toggle-text">إنشاء حساب جديد</span>
+                </button>
             </div>
-        </main>
+        </div>
 
-        <div id="view-manage" class="hidden glass rounded-[2.5rem] overflow-hidden">
-            <table class="w-full text-right text-xs"><tbody id="manage-body"></tbody></table>
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden">
+            <header class="bg-white px-6 py-4 flex justify-between items-center border-b sticky top-0 z-50 shadow-sm">
+                <!-- تم إصلاح زر تسجيل الخروج هنا عبر إضافة onclick مباشرة -->
+                <button onclick="logoutNow()" class="p-2 text-red-500 bg-red-50 rounded-xl active:scale-90 transition flex items-center justify-center">
+                    <i data-lucide="log-out" class="w-6 h-6"></i>
+                </button>
+                <div class="text-center">
+                    <span id="user-display-name" class="font-black text-slate-800 block">المستخدم</span>
+                    <span id="user-role-badge" class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full font-bold text-slate-500">مورد</span>
+                </div>
+                <div id="balance-badge" class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-black border border-green-200">
+                    $0.00
+                </div>
+            </header>
+
+            <main id="view-container" class="p-4 max-w-lg mx-auto pb-24">
+                <!-- المحتوى يتم حقنه هنا -->
+            </main>
+
+            <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t px-8 py-3 flex justify-around items-center z-40 shadow-lg">
+                <button onclick="changeView('home')" class="nav-item p-3 rounded-2xl transition" data-view="home">
+                    <i data-lucide="layout-grid"></i>
+                </button>
+                <button onclick="changeView('history')" class="nav-item p-3 rounded-2xl text-slate-400 transition" data-view="history">
+                    <i data-lucide="history"></i>
+                </button>
+                <button id="admin-only-btn" onclick="changeView('admin')" class="nav-item p-3 rounded-2xl text-slate-400 transition hidden" data-view="admin">
+                    <i data-lucide="settings"></i>
+                </button>
+            </nav>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, doc, deleteDoc, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold opacity-0 transition-all z-[100] pointer-events-none shadow-2xl border border-slate-700"></div>
 
-        const firebaseConfig = 
-{
-  "apiKey": "AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY",
-  "authDomain": "bard-frontend.firebaseapp.com",
-  "projectId": "bard-frontend",
-  "storageBucket": "bard-frontend.firebasestorage.app",
-  "messagingSenderId": "175205271074",
-  "appId": "1:175205271074:web:2b7bd4d34d33bf38e6ec7b"
-}
-;
-        const app_id = "c_dcf2d51ebf80e675_index.html-588";
-        const token = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyNDIwNWRjNjYzMGQwMGYzOWIxODY4ZDRmYWI3NTc1N2Y0ZGI0OTAiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay1mYnN2Y0BiYXJkLWZyb250ZW5kLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiIwOTk3NDAwMTE4OTM3NzkxNzc3NCIsImlzcyI6ImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGJhcmQtZnJvbnRlbmQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJjbGFpbXMiOnsiYXBwSWQiOiJjX2RjZjJkNTFlYmY4MGU2NzVfaW5kZXguaHRtbC01ODgifSwiZXhwIjoxNzY3MDI2NzQ4LCJpYXQiOjE3NjcwMjMxNDgsImFsZyI6IlJTMjU2In0.gd66XaREndGncs9oNpZDS-z5944gPGUsF7NPtYPxwQ1Qpn9rMHrSkRlhpXwPBywng2vK1RXkCARmCiX9naScU0MfeTQfa7QLskE6A3Q0Dia11N-P2x0yCbOfwsZ39o_A9Zn1pjVy_oUXYW2C15a4PI0UsOUCI2vWbVlzGgdcIj5FH0sJd25NkKhDKaeqd5t0jL6GOnlKRwmvRWTk0vEubUda2H5ZOjx09pBykuDInrgBbr5g3ukLGJMvdyy4AyoTEHkyVJra5Fd-GAL4i-8GpS1HTEMIiIXbMjlngz1MwGQVsT4dp6drPuUwKfXTpp8SsSCZ-nL4lP6-cUNKcdYjIA";
+    <script>
+        // --- إدارة الحالة ---
+        let state = {
+            user: null,
+            vendors: JSON.parse(localStorage.getItem('v_db')) || [{id:'admin', username:'admin', password:'admin', name:'المدير', balance: 9999, role:'admin'}],
+            inventory: JSON.parse(localStorage.getItem('i_db')) || [],
+            logs: JSON.parse(localStorage.getItem('l_db')) || []
+        };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        let inventory = [];
+        const save = () => {
+            localStorage.setItem('v_db', JSON.stringify(state.vendors));
+            localStorage.setItem('i_db', JSON.stringify(state.inventory));
+            localStorage.setItem('l_db', JSON.stringify(state.logs));
+        };
 
-        async function start() {
-            try { if(token) await signInWithCustomToken(auth, token); else await signInAnonymously(auth); } catch(e) {}
-            onAuthStateChanged(auth, (u) => { if(u) {
-                onSnapshot(collection(db, 'artifacts', app_id, 'public', 'data', 'inventory'), (snap) => {
-                    inventory = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                    document.getElementById('cnt-general').innerText = inventory.filter(i=>i.category==='general').length;
-                    document.getElementById('cnt-go').innerText = inventory.filter(i=>i.category==='go').length;
-                    document.getElementById('cnt-work').innerText = inventory.filter(i=>i.category==='work').length;
-                    document.getElementById('manage-body').innerHTML = inventory.map(i => `
-                        <tr class="border-b border-white/5"><td class="p-4 font-bold">${i.login}</td><td class="p-4 text-indigo-400">${i.category}</td><td class="p-4 text-center"><button onclick="window.delItem('${i.id}')" class="text-rose-500">حذف</button></td></tr>
-                    `).join('');
-                });
-            }});
+        const notify = (msg) => {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.remove('opacity-0');
+            t.classList.add('opacity-100');
+            setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 3000);
+        };
+
+        // --- وظيفة تسجيل الخروج (مصلحة) ---
+        window.logoutNow = function() {
+            if(confirm("هل تريد تسجيل الخروج؟")) {
+                state.user = null;
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('auth-screen').classList.remove('hidden');
+                // تصفير مدخلات تسجيل الدخول
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            }
+        };
+
+        // --- منطق المصادقة ---
+        let isRegMode = false;
+        document.getElementById('toggle-auth').onclick = () => {
+            isRegMode = !isRegMode;
+            document.getElementById('reg-fields').classList.toggle('hidden', !isRegMode);
+            document.getElementById('auth-subtitle').innerText = isRegMode ? 'إنشاء حساب مورد جديد' : 'سجل دخولك للبدء';
+            document.getElementById('toggle-text').innerText = isRegMode ? 'العودة للدخول' : 'إنشاء حساب جديد';
+            document.querySelector('#auth-form button').innerText = isRegMode ? 'تسجيل' : 'دخول';
+        };
+
+        document.getElementById('auth-form').onsubmit = (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+
+            if (isRegMode) {
+                const n = document.getElementById('reg-name').value.trim();
+                if(!n) return notify("يرجى كتابة الاسم");
+                if(state.vendors.find(v => v.username === u)) return notify("اليوزر مستخدم بالفعل");
+                state.vendors.push({id:Date.now(), username:u, password:p, name:n, balance:0, role:'vendor'});
+                save();
+                notify("تم التسجيل! يمكنك الدخول الآن");
+                document.getElementById('toggle-auth').click();
+            } else {
+                const found = state.vendors.find(v => v.username === u && v.password === p);
+                if (found) {
+                    state.user = found;
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    initDashboard();
+                } else {
+                    notify("خطأ في اليوزر أو الباسورد");
+                }
+            }
+        };
+
+        // --- لوحة التحكم ---
+        function initDashboard() {
+            document.getElementById('user-display-name').innerText = state.user.name;
+            document.getElementById('user-role-badge').innerText = state.user.role === 'admin' ? 'مدير' : 'مورد';
+            document.getElementById('admin-only-btn').classList.toggle('hidden', state.user.role !== 'admin');
+            updateBalance();
+            changeView('home');
         }
 
-        window.upload = async () => {
-            const raw = document.getElementById('up-raw').value.trim();
-            const cat = document.getElementById('up-cat').value;
-            if(!raw) return;
-            const lines = raw.split('\n');
-            let batch = writeBatch(db);
-            lines.forEach(line => {
-                if(!line.trim()) return;
-                const parts = line.split(line.includes(';') ? ';' : ':');
-                batch.set(doc(collection(db, 'artifacts', app_id, 'public', 'data', 'inventory')), { login: parts[0].trim(), password: (parts[1]||'').trim(), category: cat, timestamp: serverTimestamp() });
+        function updateBalance() {
+            document.getElementById('balance-badge').innerText = `$${state.user.balance.toFixed(2)}`;
+        }
+
+        function changeView(view) {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.toggle('active-nav', el.dataset.view === view);
+                el.classList.toggle('text-slate-400', el.dataset.view !== view);
             });
-            await batch.commit();
-            document.getElementById('up-raw').value = '';
-            showToast("تم الرفع");
+
+            const container = document.getElementById('view-container');
+            if (view === 'home') renderHome(container);
+            if (view === 'history') renderHistory(container);
+            if (view === 'admin') renderAdmin(container);
+            lucide.createIcons();
+        }
+
+        function renderHome(container) {
+            let html = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black text-slate-800">الحسابات</h2>
+                    <a href="https://t.me/aboarenx" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg">
+                        <i data-lucide="send" class="w-4 h-4"></i> شحن
+                    </a>
+                </div>
+            `;
+
+            const available = state.inventory.filter(i => i.status === 'available');
+            if (available.length === 0) {
+                html += `<div class="bg-white p-10 rounded-[2rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold">المخزن فارغ</div>`;
+            } else {
+                available.forEach(item => {
+                    html += `
+                        <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-4">
+                                <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl"><i data-lucide="key"></i></div>
+                                <div>
+                                    <h4 class="font-black text-slate-800">${item.type}</h4>
+                                    <p class="text-blue-600 font-black text-sm">$${item.price}</p>
+                                </div>
+                            </div>
+                            <button onclick="handlePurchase('${item.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm touch-button">شراء</button>
+                        </div>
+                    `;
+                });
+            }
+            container.innerHTML = html;
+        }
+
+        function renderHistory(container) {
+            const myLogs = state.user.role === 'admin' ? state.logs : state.logs.filter(l => l.buyerId === state.user.id);
+            let html = `<h2 class="text-xl font-black mb-6">مشترياتي</h2>`;
+            
+            if(myLogs.length === 0) {
+                html += `<p class="text-center py-10 text-slate-400">لا توجد عمليات</p>`;
+            } else {
+                myLogs.forEach(l => {
+                    html += `
+                        <div class="bg-white p-5 rounded-[2rem] border border-slate-100 mb-4">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-2">
+                                <span>${l.date}</span>
+                                <span class="text-green-600">$${l.price}</span>
+                            </div>
+                            <h4 class="font-black mb-3">${l.type}</h4>
+                            <div class="bg-slate-50 p-4 rounded-2xl text-xs space-y-2 border border-dashed border-slate-200">
+                                <p><strong>البيانات:</strong> <span class="text-blue-700 font-mono select-all">${l.details}</span></p>
+                                ${l.backup ? `<p><strong>احتياطي:</strong> ${l.backup}</p>` : ''}
+                                ${l.notes ? `<p><strong>ملاحظة:</strong> ${l.notes}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            container.innerHTML = html;
+        }
+
+        function renderAdmin(container) {
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-black">الإدارة</h2>
+                    
+                    <div class="bg-white p-6 rounded-[2rem] shadow-sm border">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="plus-circle" class="text-blue-600"></i> إضافة حساب</h3>
+                        <div class="space-y-3">
+                            <input id="in-type" type="text" placeholder="اسم الخدمة" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
+                            <input id="in-details" type="text" placeholder="يوزر:باس" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 text-left">
+                            <input id="in-backup" type="text" placeholder="بريد احتياطي" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 text-left">
+                            <textarea id="in-notes" placeholder="ملاحظات" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 h-20"></textarea>
+                            <input id="in-price" type="number" placeholder="السعر $" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
+                            <button onclick="addItem()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold touch-button">إضافة للمخزن</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-[2rem] shadow-sm border">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="wallet" class="text-green-600"></i> شحن رصيد</h3>
+                        <div class="space-y-3">
+                            <select id="sel-vendor" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
+                                <option value="">اختر المورد</option>
+                                ${state.vendors.filter(v=>v.role!=='admin').map(v=>`<option value="${v.id}">${v.name} ($${v.balance})</option>`)}
+                            </select>
+                            <input id="in-recharge" type="number" placeholder="المبلغ" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
+                            <button onclick="rechargeVendor()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold touch-button">تأكيد الشحن</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // --- الإجراءات ---
+        window.handlePurchase = (id) => {
+            const item = state.inventory.find(i => i.id == id);
+            if(!item) return;
+
+            if(state.user.balance < item.price) {
+                return notify("رصيدك غير كافٍ");
+            }
+
+            if(confirm(`هل تريد شراء ${item.type} بـ $${item.price}؟`)) {
+                state.user.balance -= item.price;
+                item.status = 'sold';
+                item.buyerId = state.user.id;
+
+                state.logs.unshift({
+                    id: Date.now(),
+                    buyerId: state.user.id,
+                    type: item.type,
+                    price: item.price,
+                    details: item.details,
+                    backup: item.backup,
+                    notes: item.notes,
+                    date: new Date().toLocaleString('ar-EG')
+                });
+
+                save();
+                updateBalance();
+                renderHome(document.getElementById('view-container'));
+                notify("تم الشراء! راجع سجل المشتريات");
+            }
         };
 
-        window.pull = async (cat) => {
-            const item = inventory.find(i => i.category === cat);
-            if(!item) return showToast("فارغ");
-            document.getElementById('out-user').innerText = item.login;
-            document.getElementById('out-pass').innerText = item.password;
-            document.getElementById('res-card').classList.remove('hidden');
-            await addDoc(collection(db, 'artifacts', app_id, 'public', 'data', 'history'), { login: item.login, cat: item.category, date: new Date().toLocaleString(), timestamp: serverTimestamp() });
-            await deleteDoc(doc(db, 'artifacts', app_id, 'public', 'data', 'inventory', item.id));
+        window.addItem = () => {
+            const type = document.getElementById('in-type').value;
+            const details = document.getElementById('in-details').value;
+            const price = parseFloat(document.getElementById('in-price').value);
+            const backup = document.getElementById('in-backup').value;
+            const notes = document.getElementById('in-notes').value;
+
+            if(!type || !details || isNaN(price)) return notify("أكمل البيانات");
+
+            state.inventory.push({ id: Date.now(), type, details, price, backup, notes, status: 'available' });
+            save();
+            notify("تمت الإضافة");
+            renderAdmin(document.getElementById('view-container'));
         };
 
-        window.delItem = async (id) => { if(confirm("حذف؟")) await deleteDoc(doc(db, 'artifacts', app_id, 'public', 'data', 'inventory', id)); };
-        
-        window.showView = (v) => {
-            document.getElementById('view-main').classList.toggle('hidden', v !== 'main');
-            document.getElementById('view-manage').classList.toggle('hidden', v !== 'manage');
-            document.getElementById('tab-main').classList.toggle('nav-active', v === 'main');
-            document.getElementById('tab-manage').classList.toggle('nav-active', v === 'manage');
+        window.rechargeVendor = () => {
+            const vId = document.getElementById('sel-vendor').value;
+            const amt = parseFloat(document.getElementById('in-recharge').value);
+            if(!vId || isNaN(amt)) return notify("بيانات الشحن ناقصة");
+
+            const vIndex = state.vendors.findIndex(v => v.id == vId);
+            state.vendors[vIndex].balance += amt;
+            save();
+            notify("تم الشحن");
+            renderAdmin(document.getElementById('view-container'));
         };
 
-        function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display='block'; setTimeout(()=>t.style.display='none',2000); }
-
-        start();
+        // تشغيل الأيقونات
+        lucide.createIcons();
     </script>
 </body>
 </html>
+
