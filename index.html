@@ -26,12 +26,13 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const coreId = "aren_final_pro_v3"; 
+        const coreId = "aren_final_pro_v4"; 
 
         let currentUser = null;
         let allProducts = [];
         let allUsers = [];
         let myOrders = [];
+        let userSearchQuery = "";
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -126,21 +127,36 @@
             try {
                 const userRef = doc(db, 'artifacts', coreId, 'data', auth.currentUser.uid);
                 await updateDoc(userRef, { 
-                    balance: currentUser.balance - p.price,
+                    balance: parseFloat((currentUser.balance - p.price).toFixed(2)),
                     orders: arrayUnion(orderData)
                 });
                 await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: arrayRemove(account) });
                 
-                alert(`✅ تم الشراء بنجاح! راجع قسم "مشترياتي" لرؤية بيانات الحساب.`);
+                alert(`✅ تم الشراء بنجاح! راجع قسم "مشترياتي"`);
                 setTab('orders');
             } catch(e) { alert("خطأ في العملية"); }
         };
 
-        window.updateUserBalance = async (uid, amount) => {
+        // وظائف الإدارة المتقدمة
+        window.setUserSearch = (q) => {
+            userSearchQuery = q.toLowerCase();
+            render();
+        };
+
+        window.manualUpdateBalance = async (uid) => {
+            const input = document.getElementById(`balance-input-${uid}`);
+            const amount = parseFloat(input.value);
+            if (isNaN(amount)) return alert("أدخل مبلغاً صحيحاً");
+            
             const user = allUsers.find(u => u.uid === uid);
             if(!user) return;
-            const newBalance = (user.balance || 0) + amount;
-            await updateDoc(doc(db, 'artifacts', coreId, 'data', uid), { balance: Math.max(0, newBalance) });
+            
+            const newBalance = parseFloat(((user.balance || 0) + amount).toFixed(2));
+            try {
+                await updateDoc(doc(db, 'artifacts', coreId, 'data', uid), { balance: Math.max(0, newBalance) });
+                alert("تم تحديث الرصيد بنجاح");
+                input.value = "";
+            } catch(e) { alert("فشل تحديث الرصيد"); }
         };
 
         window.saveProduct = async () => {
@@ -164,7 +180,7 @@
                 stock: arrayUnion({ email, pass, backup, note, addedAt: Date.now() }) 
             });
             document.getElementById('stock-form').reset();
-            alert("تم الشحن");
+            alert("تم شحن الحساب");
         };
 
         window.deleteProduct = async (id) => { if(confirm("حذف؟")) deleteDoc(doc(db, 'artifacts', coreId, 'products', id)); };
@@ -184,12 +200,12 @@
                 root.innerHTML = `<h2 class="text-xl font-black mb-6 flex items-center gap-2"><i data-lucide="shopping-bag" class="text-blue-600"></i> السوق</h2>`;
                 allProducts.forEach(p => {
                     root.innerHTML += `
-                        <div class="bg-white p-5 rounded-[2rem] border border-slate-50 mb-4 flex justify-between items-center shadow-sm active:scale-95 transition-transform">
+                        <div class="bg-white p-5 rounded-[2rem] border border-slate-50 mb-4 flex justify-between items-center shadow-sm">
                             <div class="flex-1">
                                 <div class="font-black text-slate-800 text-sm">${p.name}</div>
                                 <div class="flex gap-2 mt-2">
                                     <span class="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full">$${p.price.toFixed(2)}</span>
-                                    <span class="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold uppercase">الكمية: ${p.stock ? p.stock.length : 0}</span>
+                                    <span class="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold">المتوفر: ${p.stock ? p.stock.length : 0}</span>
                                 </div>
                             </div>
                             <button onclick="buy('${p.id}')" class="bg-slate-900 text-white px-7 py-3 rounded-2xl text-[11px] font-black">شراء</button>
@@ -198,37 +214,20 @@
             } else if (activeTab === 'orders') {
                 root.innerHTML = `<h2 class="text-xl font-black mb-6 flex items-center gap-2"><i data-lucide="package" class="text-blue-600"></i> مشترياتي</h2>`;
                 if(myOrders.length === 0) {
-                    root.innerHTML += `<div class="p-20 text-center text-slate-400 font-bold italic">لم تشترِ أي حسابات بعد</div>`;
+                    root.innerHTML += `<div class="p-20 text-center text-slate-400 font-bold italic">لم تشتري أي شيء بعد</div>`;
                 } else {
                     myOrders.slice().reverse().forEach(o => {
                         root.innerHTML += `
                             <div class="bg-white p-6 rounded-[2.5rem] border border-slate-50 mb-4 shadow-sm">
                                 <div class="flex justify-between items-start mb-4 border-b pb-4">
-                                    <div>
-                                        <div class="font-black text-slate-800 text-sm">${o.productName}</div>
-                                        <div class="text-[9px] text-slate-400 font-bold mt-1 uppercase">كود الطلب: ${o.orderId}</div>
-                                    </div>
-                                    <div class="text-[9px] bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-black">${o.purchaseDate}</div>
+                                    <div><div class="font-black text-slate-800 text-sm">${o.productName}</div><div class="text-[8px] text-slate-400 uppercase font-bold mt-1">ID: ${o.orderId}</div></div>
+                                    <div class="text-[9px] bg-slate-50 text-slate-400 px-3 py-1 rounded-full font-black">${o.purchaseDate}</div>
                                 </div>
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
-                                        <span class="text-[10px] font-bold text-slate-400">البريد:</span>
-                                        <span class="text-[11px] font-black text-slate-700 select-all">${o.email}</span>
-                                    </div>
-                                    <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
-                                        <span class="text-[10px] font-bold text-slate-400">الرمز:</span>
-                                        <span class="text-[11px] font-black text-slate-700 select-all">${o.pass}</span>
-                                    </div>
-                                    ${o.backup ? `
-                                    <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
-                                        <span class="text-[10px] font-bold text-slate-400">الاحتياطي:</span>
-                                        <span class="text-[11px] font-black text-blue-600 select-all">${o.backup}</span>
-                                    </div>` : ''}
-                                    ${o.note ? `
-                                    <div class="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                                        <p class="text-[9px] font-black text-amber-600 mb-1 uppercase tracking-wider">ملاحظات البائع:</p>
-                                        <p class="text-[11px] font-bold text-amber-800">${o.note}</p>
-                                    </div>` : ''}
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-400">البريد:</span><span class="text-[11px] font-black text-slate-700 select-all">${o.email}</span></div>
+                                    <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-400">الرمز:</span><span class="text-[11px] font-black text-slate-700 select-all">${o.pass}</span></div>
+                                    ${o.backup ? `<div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-400">الاحتياطي:</span><span class="text-[11px] font-black text-blue-600 select-all">${o.backup}</span></div>` : ''}
+                                    ${o.note ? `<div class="bg-amber-50 p-3 rounded-xl text-[10px] text-amber-800 font-bold border border-amber-100">${o.note}</div>` : ''}
                                 </div>
                             </div>`;
                     });
@@ -238,43 +237,60 @@
                     <div class="bg-white p-10 rounded-[2.5rem] border text-center animate-in fade-in duration-500">
                         <div class="w-20 h-20 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-black shadow-lg shadow-blue-100">${currentUser.email[0].toUpperCase()}</div>
                         <h3 class="font-black text-slate-800">${currentUser.email}</h3>
+                        <p class="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest italic">ID: ${currentUser.uid.substring(0,8)}</p>
                         <div class="mt-8 space-y-3">
-                            <a href="https://t.me/aboarenx" target="_blank" class="flex items-center justify-center gap-2 bg-green-500 text-white p-4 rounded-2xl font-black text-sm shadow-lg shadow-green-100"><i data-lucide="send" class="w-4 h-4"></i> شحن الرصيد (@aboarenx)</a>
+                            <a href="https://t.me/aboarenx" target="_blank" class="flex items-center justify-center gap-2 bg-green-500 text-white p-4 rounded-2xl font-black text-sm shadow-lg shadow-green-100"><i data-lucide="send" class="w-4 h-4"></i> تواصل لشحن الرصيد</a>
                             <button onclick="logout()" class="w-full bg-slate-50 text-slate-400 p-4 rounded-2xl font-black text-xs border">تسجيل الخروج</button>
                         </div>
                     </div>`;
             } else if (activeTab === 'admin' && currentUser.role === 'admin') {
+                const filteredUsers = allUsers.filter(u => u.email.toLowerCase().includes(userSearchQuery) || u.uid.includes(userSearchQuery));
+                
                 root.innerHTML = `
                     <div class="space-y-6 pb-20 animate-in slide-in-from-bottom-5">
+                        <!-- محرك البحث وشحن الرصيد -->
                         <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                            <h3 class="text-xs font-black text-blue-600 mb-4 uppercase">إدارة رصيد المستخدمين</h3>
-                            <div class="space-y-3 max-h-60 overflow-y-auto pr-2">
-                                ${allUsers.map(u => `
-                                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                                        <div class="overflow-hidden"><p class="text-[10px] font-black truncate">${u.email}</p><p class="text-[10px] text-blue-600">$${(u.balance || 0).toFixed(2)}</p></div>
-                                        <div class="flex gap-1">
-                                            <button onclick="updateUserBalance('${u.uid}', 5)" class="bg-green-500 text-white w-8 h-8 rounded-lg font-bold text-xs">+$5</button>
-                                            <button onclick="updateUserBalance('${u.uid}', -5)" class="bg-red-500 text-white w-8 h-8 rounded-lg font-bold text-xs">-$5</button>
+                            <h3 class="text-xs font-black text-blue-600 mb-4 uppercase flex items-center gap-2"><i data-lucide="search" class="w-4 h-4"></i> محرك بحث المستخدمين</h3>
+                            <input oninput="setUserSearch(this.value)" placeholder="ابحث بالإيميل أو الـ ID..." class="w-full p-4 bg-slate-50 rounded-2xl mb-4 text-sm outline-none border border-transparent focus:border-blue-200">
+                            
+                            <div class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                                ${filteredUsers.length === 0 ? '<p class="text-center text-[10px] text-slate-400 italic py-4">لا يوجد مستخدمين بهذا الاسم</p>' : ''}
+                                ${filteredUsers.map(u => `
+                                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <div class="overflow-hidden"><p class="text-[10px] font-black truncate text-slate-700">${u.email}</p><p class="text-[9px] text-blue-500 font-bold">الرصيد: $${(u.balance || 0).toFixed(2)}</p></div>
+                                            <span class="text-[8px] bg-slate-200 px-2 py-0.5 rounded text-slate-500 font-bold">UID: ${u.uid.substring(0,6)}</span>
                                         </div>
+                                        <div class="flex gap-2">
+                                            <input id="balance-input-${u.uid}" type="number" step="0.01" placeholder="المبلغ (مثال: 5.50)" class="flex-1 p-2 bg-white rounded-xl text-[10px] font-bold outline-none border border-slate-200">
+                                            <button onclick="manualUpdateBalance('${u.uid}')" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">شحن</button>
+                                        </div>
+                                        <p class="text-[8px] text-slate-400 mt-2">ملاحظة: لإرسال مبلغ اكتب الرقم موجب، لسحبه اكتبه بالسالب (-).</p>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
+
+                        <!-- إدارة المنتجات -->
                         <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                            <h3 class="text-xs font-black text-purple-600 mb-4 uppercase">إضافة صنف</h3>
-                            <input id="p-name" placeholder="اسم المنتج" class="w-full p-4 bg-slate-50 rounded-2xl mb-2 text-sm outline-none">
-                            <input id="p-price" type="number" placeholder="السعر" class="w-full p-4 bg-slate-50 rounded-2xl mb-4 text-sm outline-none">
-                            <button onclick="saveProduct()" class="w-full bg-purple-600 text-white p-4 rounded-2xl font-black">حفظ الصنف</button>
+                            <h3 class="text-xs font-black text-purple-600 mb-4 uppercase">إضافة منتج جديد</h3>
+                            <div class="flex gap-2 mb-2">
+                                <input id="p-name" placeholder="اسم المنتج" class="flex-1 p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                <input id="p-price" type="number" step="0.01" placeholder="السعر $" class="w-24 p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                            </div>
+                            <button onclick="saveProduct()" class="w-full bg-purple-600 text-white p-4 rounded-2xl font-black shadow-lg shadow-purple-100">حفظ المنتج</button>
                         </div>
+
+                        <!-- شحن المخزون -->
                         <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                            <h3 class="text-xs font-black text-green-600 mb-4 uppercase">شحن ستوك</h3>
+                            <h3 class="text-xs font-black text-green-600 mb-4 uppercase">شحن المخزون (الستوك)</h3>
                             <form id="stock-form" class="space-y-2">
-                                <select id="s-pid" class="w-full p-4 bg-slate-50 rounded-2xl text-sm">${allProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
-                                <input id="s-email" placeholder="البريد" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none">
-                                <input id="s-pass" placeholder="الرمز" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none">
-                                <input id="s-backup" placeholder="الاحتياطي" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none">
-                                <textarea id="s-note" placeholder="ملاحظات" class="w-full p-4 bg-slate-50 rounded-2xl h-20 text-xs outline-none"></textarea>
-                                <button type="button" onclick="addAccount()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-black">شحن المخزون</button>
+                                <select id="s-pid" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none border-none">${allProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+                                <input id="s-email" placeholder="البريد / اليوزر" class="w-full p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                <input id="s-pass" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                <input id="s-backup" placeholder="أكواد احتياطية (اختياري)" class="w-full p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                <textarea id="s-note" placeholder="ملاحظات الحساب..." class="w-full p-4 bg-slate-50 rounded-2xl h-20 text-xs outline-none"></textarea>
+                                <button type="button" onclick="addAccount()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-black shadow-lg shadow-green-100">إضافة الحساب للمخزن</button>
                             </form>
                         </div>
                     </div>`;
@@ -285,45 +301,46 @@
     <style>
         body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar { display: none; }
-        .glass-header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
-        .active-nav { color: #2563eb; position: relative; }
-        .active-nav::after { content: ''; position: absolute; bottom: -4px; width: 4px; height: 4px; background: #2563eb; border-radius: 50%; }
+        .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .nav-btn { color: #94a3b8; transition: all 0.3s; }
+        .nav-btn.active { color: #2563eb; transform: scale(1.1); }
     </style>
 </head>
 <body class="bg-[#F8FAFC] text-slate-900 select-none">
 
-    <div id="loader" class="fixed inset-0 bg-white z-[300] flex items-center justify-center">
-        <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    <div id="loader" class="fixed inset-0 bg-white z-[300] flex flex-col items-center justify-center">
+        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">ArenStore Processing</p>
     </div>
 
     <!-- Auth System -->
     <div id="auth-page" class="fixed inset-0 bg-[#F1F5F9] z-[200] flex items-center justify-center p-6 hidden overflow-y-auto">
         <div class="w-full max-w-sm">
             <div class="text-center mb-10">
-                <div class="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-slate-200 rotate-6 border border-white">
+                <div class="w-20 h-20 bg-white rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-slate-200 border border-white rotate-6">
                     <i data-lucide="shield-check" class="text-blue-600 w-10 h-10"></i>
                 </div>
                 <h2 class="text-3xl font-black text-slate-900 tracking-tighter">ArenStore</h2>
-                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2 tracking-widest font-black uppercase">المنصة الأسرع لشراء الحسابات</p>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Exclusive Access</p>
             </div>
 
-            <div id="login-form" class="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-white">
+            <div id="login-form" class="bg-white p-8 rounded-[3rem] shadow-2xl shadow-slate-200 border border-white">
                 <h3 class="font-black text-xl mb-6">الدخول للمتجر</h3>
                 <div class="space-y-3">
-                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500">
-                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500">
-                    <button onclick="login()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">دخول</button>
-                    <button onclick="window.toggleAuthView(true)" class="w-full text-slate-400 font-bold text-[10px] mt-4 uppercase">إنشاء حساب جديد</button>
+                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <button onclick="login()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">دخول آمن</button>
+                    <button onclick="window.toggleAuthView(true)" class="w-full text-slate-400 font-bold text-[10px] mt-6 uppercase tracking-wider">سجل حساباً جديداً مجاناً</button>
                 </div>
             </div>
 
-            <div id="reg-form" class="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-white hidden">
-                <h3 class="font-black text-xl mb-6">حساب جديد</h3>
+            <div id="reg-form" class="bg-white p-8 rounded-[3rem] shadow-2xl shadow-slate-200 border border-white hidden">
+                <h3 class="font-black text-xl mb-6">عضوية جديدة</h3>
                 <div class="space-y-3">
-                    <input id="r-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500">
-                    <input id="r-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500">
-                    <button onclick="register()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">تأكيد التسجيل</button>
-                    <button onclick="window.toggleAuthView(false)" class="w-full text-slate-400 font-bold text-[10px] mt-4 uppercase text-center">لديك حساب؟ سجل</button>
+                    <input id="r-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <input id="r-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <button onclick="register()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">إنشاء حساب</button>
+                    <button onclick="window.toggleAuthView(false)" class="w-full text-slate-400 font-bold text-[10px] mt-6 uppercase tracking-wider text-center">لديك حساب بالفعل؟ سجل دخولك</button>
                 </div>
             </div>
         </div>
@@ -334,18 +351,18 @@
         <header class="p-6 glass-header sticky top-0 z-40 flex justify-between items-center border-b border-slate-100">
             <div>
                 <h1 class="font-black text-xl tracking-tighter">ArenStore</h1>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">مرحباً، <span id="user-email-header" class="text-blue-600">..</span></p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">مرحباً بك، <span id="user-email-header" class="text-blue-600 font-black">User</span></p>
             </div>
-            <div id="balance-display" class="bg-white text-slate-900 px-6 py-2.5 rounded-2xl font-black text-sm shadow-sm border border-slate-100">$0.00</div>
+            <div id="balance-display" class="bg-white text-slate-900 px-6 py-2.5 rounded-2xl font-black text-sm shadow-sm border border-slate-100 tracking-tight">$0.00</div>
         </header>
 
         <main id="app-view" class="p-6 pb-32"></main>
 
-        <nav class="fixed bottom-6 left-6 right-6 max-w-lg mx-auto bg-white/90 backdrop-blur-xl border border-white/50 rounded-[2.5rem] p-2 flex justify-around shadow-2xl z-50">
-            <button onclick="setTab('home')" class="p-4 flex-1 flex justify-center transition-all"><i data-lucide="shopping-bag" class="w-5 h-5"></i></button>
-            <button onclick="setTab('orders')" class="p-4 flex-1 flex justify-center transition-all"><i data-lucide="package" class="w-5 h-5"></i></button>
-            <button onclick="setTab('profile')" class="p-4 flex-1 flex justify-center transition-all"><i data-lucide="user" class="w-5 h-5"></i></button>
-            <button id="admin-nav-btn" onclick="setTab('admin')" class="p-4 flex-1 flex justify-center hidden text-blue-600 animate-pulse"><i data-lucide="shield-check" class="w-5 h-5"></i></button>
+        <nav class="fixed bottom-6 left-6 right-6 max-w-lg mx-auto bg-white/95 backdrop-blur-xl border border-white/50 rounded-[2.5rem] p-2 flex justify-around shadow-2xl z-50">
+            <button onclick="setTab('home')" id="nav-home" class="nav-btn p-4 flex-1 flex justify-center"><i data-lucide="shopping-bag"></i></button>
+            <button onclick="setTab('orders')" id="nav-orders" class="nav-btn p-4 flex-1 flex justify-center"><i data-lucide="package"></i></button>
+            <button onclick="setTab('profile')" id="nav-profile" class="nav-btn p-4 flex-1 flex justify-center"><i data-lucide="user"></i></button>
+            <button id="admin-nav-btn" onclick="setTab('admin')" id="nav-admin" class="nav-btn p-4 flex-1 flex justify-center hidden text-red-500 animate-pulse"><i data-lucide="shield-check"></i></button>
         </nav>
     </div>
 
