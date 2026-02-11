@@ -3,355 +3,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مخزن الحسابات السحابي | @aboarenx</title>
+    <title>ArenStore | المتجر الرسمي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Firebase SDKs -->
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, updateDoc, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
+        const firebaseConfig = {
+          apiKey: "AIzaSyCrLUiTNZL3vJ10RzqQVBC2UUMlhQRmB18",
+          authDomain: "arenstore-71e49.firebaseapp.com",
+          projectId: "arenstore-71e49",
+          storageBucket: "arenstore-71e49.firebasestorage.app",
+          messagingSenderId: "221262833085",
+          appId: "1:221262833085:web:1b5eede5a15b1a9e53ded4",
+          measurementId: "G-8W3Q9L7ZRB"
+        };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'aboarenx-store';
+        const coreId = "aren_final_v1"; 
 
-        // --- State ---
-        let currentUserData = null;
-        let categories = [];
-        let logs = [];
+        let currentUser = null;
+        let allProducts = [];
 
-        // --- UI Elements ---
-        const authScreen = document.getElementById('auth-screen');
-        const dashboard = document.getElementById('dashboard');
-        const viewContainer = document.getElementById('view-container');
-        const toast = document.getElementById('toast');
-
-        const notify = (msg) => {
-            toast.innerText = msg;
-            toast.classList.replace('opacity-0', 'opacity-100');
-            setTimeout(() => toast.classList.replace('opacity-100', 'opacity-0'), 3000);
-        };
-
-        // --- Auth Persistence ---
-        onAuthStateChanged(auth, async (user) => {
+        // Auth Observer
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'users', user.uid));
-                if (userDoc.exists()) {
-                    currentUserData = userDoc.data();
-                    currentUserData.uid = user.uid;
-                    showDashboard();
-                } else {
-                    // This handles cases where auth exists but no firestore doc (e.g. manual delete)
-                    auth.signOut();
-                }
+                syncUser(user.uid);
+                document.getElementById('auth-page').classList.add('hidden');
             } else {
-                showAuth();
+                document.getElementById('auth-page').classList.remove('hidden');
+                document.getElementById('loader').classList.add('hidden');
             }
         });
 
-        // --- Real-time Listeners ---
-        function initDataListeners() {
-            // Listen for Categories
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'categories'), (snapshot) => {
-                categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (dashboard.style.display !== 'none') renderCurrentView();
-            });
-
-            // Listen for My Logs
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'logs'), (snapshot) => {
-                const allLogs = snapshot.docs.map(doc => doc.data());
-                logs = currentUserData.role === 'admin' 
-                    ? allLogs 
-                    : allLogs.filter(l => l.buyerId === currentUserData.uid);
-                if (dashboard.style.display !== 'none') renderCurrentView();
-            });
-
-            // Listen for My Balance
-            onSnapshot(doc(db, 'artifacts', appId, 'public', 'users', auth.currentUser.uid), (doc) => {
-                if (doc.exists()) {
-                    currentUserData.balance = doc.data().balance;
-                    document.getElementById('balance-badge').innerText = `$${currentUserData.balance.toFixed(2)}`;
-                }
-            });
-        }
-
-        function showAuth() {
-            authScreen.style.display = 'flex';
-            dashboard.style.display = 'none';
-        }
-
-        function showDashboard() {
-            authScreen.style.display = 'none';
-            dashboard.style.display = 'block';
-            document.getElementById('user-display-name').innerText = currentUserData.name;
-            document.getElementById('user-role-badge').innerText = currentUserData.role === 'admin' ? 'مدير' : 'مورد';
-            document.getElementById('admin-only-btn').classList.toggle('hidden', currentUserData.role !== 'admin');
-            initDataListeners();
-            window.changeView('home');
-        }
-
-        // --- Functions Exposed to Window ---
-        window.handleAuth = async (e) => {
-            e.preventDefault();
-            const u = document.getElementById('username').value.trim();
-            const p = document.getElementById('password').value.trim();
-            const isReg = document.getElementById('reg-fields').classList.contains('hidden') === false;
-
-            try {
-                // For simplicity in this demo, we use anonymous auth linked to a username in Firestore
-                // In a real production app, you'd use email/pass auth.
-                const cred = await signInAnonymously(auth);
-                const uid = cred.user.uid;
-
-                if (isReg) {
-                    const name = document.getElementById('reg-name').value.trim();
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'users', uid), {
-                        username: u, password: p, name, balance: 0, role: 'vendor'
-                    });
-                    notify("تم التسجيل بنجاح");
+        async function syncUser(uid) {
+            const userRef = doc(db, 'artifacts', coreId, 'data', uid);
+            onSnapshot(userRef, (snap) => {
+                if (!snap.exists()) {
+                    const role = (auth.currentUser.email === 'admin@aren.store') ? 'admin' : 'user';
+                    currentUser = { uid, email: auth.currentUser.email, balance: 0.0, role: role };
+                    setDoc(userRef, currentUser);
                 } else {
-                    // Check if credentials match (Demo logic)
-                    const userRef = doc(db, 'artifacts', appId, 'public', 'users', uid);
-                    // Since it's anonymous, we check if the doc exists and matches
-                    // Note: This logic is simplified for the prompt's scope
+                    currentUser = snap.data();
+                    if (auth.currentUser.email === 'admin@aren.store' && currentUser.role !== 'admin') {
+                        updateDoc(userRef, { role: 'admin' });
+                    }
+                    document.getElementById('balance-display').innerText = `$${currentUser.balance.toFixed(2)}`;
+                    document.getElementById('user-email-header').innerText = currentUser.email.split('@')[0];
                 }
-            } catch (err) {
-                notify("حدث خطأ في النظام");
+                document.getElementById('loader').classList.add('hidden');
+                render();
+            });
+        }
+
+        onSnapshot(collection(db, 'artifacts', coreId, 'products'), (snap) => {
+            allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render();
+        });
+
+        window.login = async () => {
+            const e = document.getElementById('l-email').value;
+            const p = document.getElementById('l-pass').value;
+            if(!e || !p) return;
+            document.getElementById('loader').classList.remove('hidden');
+            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { 
+                alert("خطأ: البريد أو كلمة المرور غير صحيحة"); 
+                document.getElementById('loader').classList.add('hidden'); 
             }
         };
 
-        window.logoutNow = () => {
-            if(confirm("هل تريد تسجيل الخروج؟")) auth.signOut();
+        window.register = async () => {
+            const e = document.getElementById('r-email').value;
+            const p = document.getElementById('r-pass').value;
+            if(!e || !p) return;
+            document.getElementById('loader').classList.remove('hidden');
+            try { await createUserWithEmailAndPassword(auth, e, p); } catch(err) { 
+                alert("خطأ: فشل إنشاء الحساب"); 
+                document.getElementById('loader').classList.add('hidden'); 
+            }
         };
 
-        let currentActiveView = 'home';
-        window.changeView = (view) => {
-            currentActiveView = view;
-            document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.toggle('active-nav', el.dataset.view === view);
-                el.classList.toggle('text-slate-400', el.dataset.view !== view);
+        window.logout = () => signOut(auth);
+
+        window.buy = async (pid) => {
+            const p = allProducts.find(x => x.id === pid);
+            if (!p || !p.stock || p.stock.length === 0) return alert("المخزن فارغ حالياً");
+            if (currentUser.balance < p.price) return alert("رصيدك غير كافٍ، تواصل مع @aboarenx للشحن");
+
+            const account = p.stock[0];
+            try {
+                await updateDoc(doc(db, 'artifacts', coreId, 'data', auth.currentUser.uid), { balance: currentUser.balance - p.price });
+                await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: arrayRemove(account) });
+                
+                const msg = `✅ تم الشراء بنجاح!\n\n📧 البريد: ${account.email}\n🔑 الرمز: ${account.pass}\n🛡️ احتياطي: ${account.backup || '-'}\n📝 ملاحظات: ${account.note || '-'}`;
+                alert(msg);
+            } catch(e) { alert("حدث خطأ تقني، حاول مرة أخرى"); }
+        };
+
+        // Admin Functions
+        window.saveProduct = async () => {
+            const name = document.getElementById('p-name').value;
+            const price = parseFloat(document.getElementById('p-price').value);
+            if(!name || isNaN(price)) return;
+            const newRef = doc(collection(db, 'artifacts', coreId, 'products'));
+            await setDoc(newRef, { id: newRef.id, name, price, stock: [] });
+            alert("تم إضافة المنتج");
+            document.getElementById('p-name').value = '';
+            document.getElementById('p-price').value = '';
+        };
+
+        window.addAccount = async () => {
+            const pid = document.getElementById('s-pid').value;
+            const email = document.getElementById('s-email').value;
+            const pass = document.getElementById('s-pass').value;
+            const backup = document.getElementById('s-backup').value;
+            const note = document.getElementById('s-note').value;
+            if(!pid || !email || !pass) return alert("أكمل البيانات الأساسية");
+            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { 
+                stock: arrayUnion({ email, pass, backup, note, addedAt: Date.now() }) 
             });
-            renderCurrentView();
+            alert("تم إضافة الحساب بنجاح");
+            document.getElementById('stock-form').reset();
         };
 
-        function renderCurrentView() {
-            if (currentActiveView === 'home') renderHome();
-            if (currentActiveView === 'history') renderHistory();
-            if (currentActiveView === 'admin') renderAdmin();
-            lucide.createIcons();
-        }
+        window.deleteProduct = async (id) => { if(confirm("هل أنت متأكد من الحذف؟")) deleteDoc(doc(db, 'artifacts', coreId, 'products', id)); };
 
-        function renderHome() {
-            let html = `
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-black text-slate-800">الأصناف</h2>
-                    <a href="https://t.me/aboarenx" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold">شحن</a>
-                </div>
-            `;
-            categories.forEach(cat => {
-                const count = cat.items ? cat.items.length : 0;
-                html += `
-                    <div class="bg-white p-5 rounded-[2rem] border mb-4 flex items-center justify-between">
-                        <div>
-                            <h4 class="font-black text-slate-800">${cat.name}</h4>
-                            <div class="flex gap-2 text-sm font-bold">
-                                <span class="text-blue-600">$${cat.price}</span>
-                                <span class="text-slate-400">الستوك: ${count}</span>
+        let activeTab = 'home';
+        window.setTab = (t) => { activeTab = t; render(); };
+
+        function render() {
+            if(!currentUser) return;
+            const root = document.getElementById('app-view');
+            root.innerHTML = '';
+
+            if (activeTab === 'home') {
+                root.innerHTML = `<h2 class="text-xl font-black mb-6 flex items-center gap-2"><i data-lucide="layout-grid" class="w-5 h-5 text-blue-600"></i> قائمة المنتجات</h2>`;
+                if(allProducts.length === 0) root.innerHTML += `<div class="p-20 text-center text-slate-400 font-bold italic">لا توجد منتجات حالياً</div>`;
+                allProducts.forEach(p => {
+                    root.innerHTML += `
+                        <div class="bg-white p-5 rounded-[2rem] border border-slate-50 mb-4 flex justify-between items-center shadow-sm">
+                            <div class="flex-1">
+                                <div class="font-black text-slate-800 text-sm">${p.name}</div>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full">$${p.price.toFixed(2)}</span>
+                                    <span class="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold">متوفر: ${p.stock ? p.stock.length : 0}</span>
+                                </div>
+                            </div>
+                            <button onclick="buy('${p.id}')" class="bg-slate-900 text-white px-7 py-3 rounded-2xl text-[11px] font-black active:scale-95 transition-all">شراء</button>
+                        </div>`;
+                });
+            } else if (activeTab === 'profile') {
+                root.innerHTML = `
+                    <div class="space-y-4 animate-in fade-in duration-500">
+                        <div class="bg-white p-10 rounded-[2.5rem] border text-center">
+                            <div class="w-20 h-20 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-black shadow-lg">${currentUser.email[0].toUpperCase()}</div>
+                            <h3 class="font-black text-slate-800">${currentUser.email}</h3>
+                            <div class="flex items-center justify-center gap-2 mt-2">
+                                <span class="text-[10px] text-white bg-blue-600 px-3 py-0.5 rounded-full font-bold uppercase tracking-widest">${currentUser.role}</span>
+                            </div>
+                            <div class="mt-8 space-y-3">
+                                <a href="https://t.me/aboarenx" target="_blank" class="flex items-center justify-center gap-2 bg-green-500 text-white p-4 rounded-2xl font-black text-sm shadow-lg shadow-green-100"><i data-lucide="send" class="w-4 h-4"></i> شحن الرصيد</a>
+                                <button onclick="logout()" class="w-full bg-slate-50 text-slate-400 p-4 rounded-2xl font-black text-xs border">تسجيل الخروج</button>
                             </div>
                         </div>
-                        <button onclick="window.purchaseItem('${cat.id}')" ${count === 0 ? 'disabled' : ''} class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm ${count === 0 ? 'opacity-30' : ''}">
-                            ${count === 0 ? 'نفذ' : 'شراء'}
-                        </button>
-                    </div>
-                `;
-            });
-            viewContainer.innerHTML = html;
-        }
-
-        function renderHistory() {
-            let html = `<h2 class="text-xl font-black mb-6 text-slate-800">مشترياتي</h2>`;
-            const sortedLogs = logs.sort((a,b) => b.timestamp - a.timestamp);
-            if(sortedLogs.length === 0) html += `<p class="text-center py-10 text-slate-400">لا يوجد سجلات</p>`;
-            sortedLogs.forEach(l => {
-                html += `
-                    <div class="bg-white p-5 rounded-[2rem] border mb-4 shadow-sm">
-                        <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-2 uppercase">
-                            <span>${new Date(l.timestamp).toLocaleString('ar-EG')}</span>
-                            <span class="text-green-600">$${l.price}</span>
-                        </div>
-                        <h4 class="font-black mb-2">${l.categoryName}</h4>
-                        <div class="bg-slate-50 p-4 rounded-2xl text-xs font-mono break-all border border-dashed select-all">
-                            ${l.details}
-                        </div>
-                    </div>
-                `;
-            });
-            viewContainer.innerHTML = html;
-        }
-
-        function renderAdmin() {
-            let html = `
-                <div class="space-y-6">
-                    <h2 class="text-2xl font-black">الإدارة السحابية</h2>
-                    
-                    <div class="bg-white p-6 rounded-[2rem] border">
-                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-plus"></i> صنف جديد</h3>
-                        <div class="space-y-3">
-                            <input id="new-cat-name" type="text" placeholder="اسم الصنف" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
-                            <input id="new-cat-price" type="number" placeholder="السعر $" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
-                            <button onclick="window.createNewCategory()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold">إنشاء</button>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-[2rem] border">
-                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="edit"></i> تعديل الأسعار</h3>
-                        <div class="space-y-3">
-                            ${categories.map(cat => `
-                                <div class="flex items-center gap-2">
-                                    <span class="flex-1 font-bold text-sm">${cat.name}</span>
-                                    <input id="edit-price-${cat.id}" type="number" value="${cat.price}" class="w-20 p-2 bg-slate-50 rounded-xl text-center font-bold">
-                                    <button onclick="window.updatePrice('${cat.id}')" class="bg-blue-600 text-white p-2 rounded-xl"><i data-lucide="save" class="w-4 h-4"></i></button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-[2rem] border">
-                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="plus-circle"></i> إضافة ستوك</h3>
-                        <div class="space-y-3">
-                            <select id="stock-select-cat" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100">
-                                ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-                            </select>
-                            <textarea id="stock-data" placeholder="يوزر:باس أو الكود" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-100 h-20"></textarea>
-                            <button onclick="window.addCategoryStock()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold">إضافة للستوك</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            viewContainer.innerHTML = html;
-        }
-
-        // --- Logic Handlers ---
-        window.createNewCategory = async () => {
-            const name = document.getElementById('new-cat-name').value;
-            const price = parseFloat(document.getElementById('new-cat-price').value);
-            if(!name || isNaN(price)) return notify("أكمل البيانات");
-            await setDoc(doc(collection(db, 'artifacts', appId, 'public', 'categories')), { name, price, items: [] });
-            notify("تم الإنشاء");
-        };
-
-        window.updatePrice = async (id) => {
-            const newPrice = parseFloat(document.getElementById(`edit-price-${id}`).value);
-            if(isNaN(newPrice)) return notify("السعر غير صحيح");
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'categories', id), { price: newPrice });
-            notify("تم تحديث السعر");
-        };
-
-        window.addCategoryStock = async () => {
-            const id = document.getElementById('stock-select-cat').value;
-            const data = document.getElementById('stock-data').value;
-            if(!id || !data) return notify("أدخل البيانات");
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'categories', id), {
-                items: arrayUnion(data)
-            });
-            notify("تمت إضافة الستوك");
-        };
-
-        window.purchaseItem = async (catId) => {
-            const cat = categories.find(c => c.id === catId);
-            if(!cat || !cat.items.length) return notify("نفذت الكمية");
-            if(currentUserData.balance < cat.price) return notify("رصيدك غير كافٍ");
-
-            if(confirm(`تأكيد شراء ${cat.name}؟`)) {
-                const soldItem = cat.items[0];
-                const userRef = doc(db, 'artifacts', appId, 'public', 'users', auth.currentUser.uid);
-                const catRef = doc(db, 'artifacts', appId, 'public', 'categories', catId);
-                const logRef = doc(collection(db, 'artifacts', appId, 'public', 'logs'));
-
-                // Transaction-like update (simplified)
-                await updateDoc(userRef, { balance: currentUserData.balance - cat.price });
-                await updateDoc(catRef, { items: arrayRemove(soldItem) });
-                await setDoc(logRef, {
-                    buyerId: auth.currentUser.uid,
-                    categoryName: cat.name,
-                    price: cat.price,
-                    details: soldItem,
-                    timestamp: Date.now()
-                });
-                notify("تم الشراء بنجاح!");
+                    </div>`;
+            } else if (activeTab === 'admin') {
+                if(currentUser.role !== 'admin') {
+                    root.innerHTML = `<div class="p-20 text-center font-black text-slate-300">❌ قسم الإدارة للمدراء فقط</div>`;
+                } else {
+                    root.innerHTML = `
+                        <div class="space-y-6 pb-20 animate-in slide-in-from-bottom-5">
+                            <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
+                                <h3 class="text-xs font-black text-blue-600 mb-4 uppercase flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> صنف جديد</h3>
+                                <input id="p-name" placeholder="اسم المنتج" class="w-full p-4 bg-slate-50 rounded-2xl mb-2 text-sm outline-none">
+                                <input id="p-price" type="number" placeholder="السعر" class="w-full p-4 bg-slate-50 rounded-2xl mb-4 text-sm outline-none">
+                                <button onclick="saveProduct()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black">إضافة للمتجر</button>
+                            </div>
+                            <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
+                                <h3 class="text-xs font-black text-green-600 mb-4 uppercase flex items-center gap-2"><i data-lucide="database" class="w-4 h-4"></i> شحن المخزون</h3>
+                                <form id="stock-form" class="space-y-2">
+                                    <select id="s-pid" class="w-full p-4 bg-slate-50 rounded-2xl text-sm">${allProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+                                    <input id="s-email" placeholder="البريد / اليوزر" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none">
+                                    <input id="s-pass" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none">
+                                    <input id="s-backup" placeholder="الاحتياطي (اختياري)" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none">
+                                    <textarea id="s-note" placeholder="ملاحظات الحساب" class="w-full p-4 bg-slate-50 rounded-2xl h-20 text-xs outline-none"></textarea>
+                                    <button type="button" onclick="addAccount()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-black">شحن المنتج</button>
+                                </form>
+                            </div>
+                            <div class="bg-white p-6 rounded-[2.5rem] border">
+                                <h3 class="text-xs font-black text-slate-400 mb-4 uppercase">التحكم بالمنتجات</h3>
+                                ${allProducts.map(p => `<div class="flex justify-between items-center py-3 border-b border-slate-50 text-xs font-bold"><span>${p.name}</span><button onclick="deleteProduct('${p.id}')" class="text-red-500 bg-red-50 px-3 py-1 rounded-lg">حذف</button></div>`).join('')}
+                            </div>
+                        </div>`;
+                }
             }
+            lucide.createIcons();
+        }
+        window.toggleAuthView = (showReg) => {
+            document.getElementById('login-form').classList.toggle('hidden', showReg);
+            document.getElementById('reg-form').classList.toggle('hidden', !showReg);
         };
-
-        // --- UI Events ---
-        document.getElementById('toggle-auth').onclick = () => {
-            const reg = document.getElementById('reg-fields');
-            reg.classList.toggle('hidden');
-            document.getElementById('toggle-text').innerText = reg.classList.contains('hidden') ? 'إنشاء حساب جديد' : 'العودة للدخول';
-        };
-
-        document.getElementById('auth-form').onsubmit = window.handleAuth;
-
     </script>
     <style>
         body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .active-nav { color: #2563eb; background-color: #eff6ff; border-radius: 1rem; }
+        ::-webkit-scrollbar { display: none; }
+        .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(15px); }
+        input, select, textarea { -webkit-appearance: none; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-[#F9FAFB] text-slate-900 select-none">
 
-    <div id="app">
-        <!-- Auth Screen -->
-        <div id="auth-screen" class="min-h-screen flex items-center justify-center p-6 bg-slate-50">
-            <div class="w-full max-w-sm">
-                <div class="text-center mb-8">
-                    <div class="inline-flex p-4 bg-blue-600 text-white rounded-3xl shadow-xl mb-4">
-                        <i data-lucide="cloud-lightning" class="w-10 h-10"></i>
-                    </div>
-                    <h1 class="text-3xl font-black text-slate-800 tracking-tight">مخزن السحاب</h1>
-                    <p class="text-slate-500 mt-2">نظام @aboarenx السحابي</p>
+    <!-- Loading Overlay -->
+    <div id="loader" class="fixed inset-0 bg-white z-[300] flex flex-col items-center justify-center">
+        <div class="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-4 text-[10px] font-black uppercase text-slate-300 tracking-widest">ArenStore Loading</p>
+    </div>
+
+    <!-- Auth System Page -->
+    <div id="auth-page" class="fixed inset-0 bg-[#F3F4F6] z-[200] flex items-center justify-center p-6 hidden overflow-y-auto">
+        <div class="w-full max-w-sm">
+            <div class="text-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div class="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-slate-200 rotate-6 border border-white">
+                    <i data-lucide="shopping-bag" class="text-blue-600 w-10 h-10"></i>
                 </div>
-                <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100">
-                    <form id="auth-form" class="space-y-4">
-                        <div id="reg-fields" class="hidden space-y-4">
-                            <input type="text" id="reg-name" placeholder="الاسم الكامل" class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200">
-                        </div>
-                        <input type="text" id="username" placeholder="اسم المستخدم" required class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 text-left">
-                        <input type="password" id="password" placeholder="كلمة المرور" required class="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 text-left">
-                        <button type="submit" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold text-lg active:scale-95 transition shadow-lg">دخول النظام</button>
-                    </form>
-                </div>
-                <button id="toggle-auth" class="w-full mt-6 py-2 text-blue-600 font-bold text-sm">
-                    <span id="toggle-text">إنشاء حساب جديد</span>
-                </button>
+                <h2 class="text-3xl font-black text-slate-900 tracking-tighter">ArenStore</h2>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-2 italic">متجرك الرقمي الأول</p>
             </div>
-        </div>
 
-        <!-- Dashboard -->
-        <div id="dashboard" style="display: none;">
-            <header class="bg-white px-6 py-4 flex justify-between items-center border-b sticky top-0 z-50">
-                <button onclick="logoutNow()" class="p-2 text-red-500 bg-red-50 rounded-xl"><i data-lucide="log-out"></i></button>
-                <div class="text-center">
-                    <span id="user-display-name" class="font-black text-slate-800 block"></span>
-                    <span id="user-role-badge" class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full font-bold text-slate-500 uppercase"></span>
+            <div id="login-form" class="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-slate-200/60 border border-white/50 transition-all">
+                <h3 class="font-black text-xl mb-6 text-slate-800">تسجيل الدخول</h3>
+                <div class="space-y-3">
+                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <button onclick="login()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">دخول</button>
+                    <button onclick="toggleAuthView(true)" class="w-full text-slate-400 font-bold text-[10px] mt-4 uppercase">ليس لديك حساب؟ إنشاء حساب</button>
                 </div>
-                <div id="balance-badge" class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-black border border-green-200">$0.00</div>
-            </header>
+            </div>
 
-            <main id="view-container" class="p-4 max-w-lg mx-auto pb-24"></main>
-
-            <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t px-8 py-3 flex justify-around items-center z-40">
-                <button onclick="changeView('home')" class="nav-item p-3 rounded-2xl transition" data-view="home"><i data-lucide="layout-grid"></i></button>
-                <button onclick="changeView('history')" class="nav-item p-3 rounded-2xl text-slate-400 transition" data-view="history"><i data-lucide="history"></i></button>
-                <button id="admin-only-btn" onclick="changeView('admin')" class="nav-item p-3 rounded-2xl text-slate-400 transition hidden" data-view="admin"><i data-lucide="settings"></i></button>
-            </nav>
+            <div id="reg-form" class="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-slate-200/60 border border-white/50 hidden">
+                <h3 class="font-black text-xl mb-6 text-slate-800">حساب جديد</h3>
+                <div class="space-y-3">
+                    <input id="r-email" type="email" placeholder="بريدك الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <input id="r-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-blue-500 transition-all">
+                    <button onclick="register()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-sm shadow-xl shadow-blue-100 active:scale-95 transition-all">تأكيد التسجيل</button>
+                    <button onclick="toggleAuthView(false)" class="w-full text-slate-400 font-bold text-[10px] mt-4 uppercase text-center">لديك حساب؟ سجل الآن</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold opacity-0 transition-all z-[100] pointer-events-none shadow-2xl"></div>
+    <!-- Main App Container -->
+    <div class="max-w-lg mx-auto min-h-screen relative">
+        <header class="p-6 glass-header sticky top-0 z-40 flex justify-between items-center border-b border-slate-100">
+            <div>
+                <h1 class="font-black text-xl tracking-tighter">ArenStore</h1>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">مرحباً، <span id="user-email-header" class="text-blue-600 font-black">User</span></p>
+            </div>
+            <div id="balance-display" class="bg-white text-slate-900 px-6 py-2.5 rounded-2xl font-black text-sm shadow-sm border border-slate-100">$0.00</div>
+        </header>
+
+        <main id="app-view" class="p-6 pb-32"></main>
+
+        <nav class="fixed bottom-6 left-6 right-6 max-w-lg mx-auto bg-white/80 backdrop-blur-xl border border-white/50 rounded-[2.5rem] p-2 flex justify-around shadow-2xl z-50">
+            <button onclick="setTab('home')" class="p-4 flex-1 flex justify-center hover:text-blue-600 transition-all"><i data-lucide="shopping-bag"></i></button>
+            <button onclick="setTab('profile')" class="p-4 flex-1 flex justify-center hover:text-blue-600 transition-all"><i data-lucide="user"></i></button>
+            <button onclick="setTab('admin')" class="p-4 flex-1 flex justify-center hover:text-blue-600 transition-all"><i data-lucide="shield-check"></i></button>
+        </nav>
+    </div>
 
     <script>lucide.createIcons();</script>
 </body>
