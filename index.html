@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ArenStore | متجر آرين المتكامل</title>
+    <title>ArenStore | المتجر المتكامل</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -28,132 +28,152 @@
         const db = getFirestore(app);
         const coreId = "aren_premium_v6"; 
 
-        let currentUser = null;
-        let allProducts = [];
-        let allUsers = [];
-        let activeTab = 'home';
-        let showUsersSection = false;
-        let showStockEditSection = false;
+        let state = {
+            user: null,
+            products: [],
+            users: [],
+            activeTab: 'home',
+            sections: {
+                users: false,
+                stockEdit: false
+            }
+        };
 
-        // Auth Logic
-        onAuthStateChanged(auth, async (user) => {
+        // Auth
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                const userRef = doc(db, 'artifacts', coreId, 'data', user.uid);
-                onSnapshot(userRef, (snap) => {
-                    if (snap.exists()) {
-                        currentUser = { uid: user.uid, ...snap.data() };
-                        document.getElementById('balance-display').innerText = `$${(currentUser.balance || 0).toFixed(2)}`;
-                        document.getElementById('admin-nav-btn').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
-                    } else {
-                        // تهيئة مستخدم جديد
-                        setDoc(userRef, { email: user.email, balance: 0, role: 'user', orders: [], uid: user.uid });
-                    }
-                    document.getElementById('loader').classList.add('hidden');
-                    render();
-                });
+                syncUserData(user.uid);
+                document.getElementById('auth-page').classList.add('hidden');
             } else {
                 document.getElementById('auth-page').classList.remove('hidden');
                 document.getElementById('loader').classList.add('hidden');
             }
         });
 
-        // Sync Data
+        async function syncUserData(uid) {
+            onSnapshot(doc(db, 'artifacts', coreId, 'data', uid), (snap) => {
+                if (snap.exists()) {
+                    state.user = { uid, ...snap.data() };
+                    document.getElementById('balance-display').innerText = `$${(state.user.balance || 0).toFixed(2)}`;
+                    document.getElementById('admin-nav-btn').style.display = state.user.role === 'admin' ? 'flex' : 'none';
+                } else {
+                    setDoc(doc(db, 'artifacts', coreId, 'data', uid), { email: auth.currentUser.email, balance: 0, role: 'user', orders: [], uid });
+                }
+                document.getElementById('loader').classList.add('hidden');
+                render();
+            });
+        }
+
+        // Global Listeners
         onSnapshot(collection(db, 'artifacts', coreId, 'products'), (snap) => {
-            allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            state.products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             render();
         });
 
-        const listenToAllUsers = () => {
+        function listenToUsers() {
             onSnapshot(collection(db, 'artifacts', coreId, 'data'), (snap) => {
-                allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+                state.users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
                 render();
             });
+        }
+
+        // Exposed Functions
+        window.toggleSection = (section) => {
+            state.sections[section] = !state.sections[section];
+            render();
         };
 
-        // Functions
-        window.setTab = (t) => { 
-            activeTab = t; 
-            if(t === 'admin') listenToAllUsers();
-            render(); 
+        window.setTab = (t) => {
+            state.activeTab = t;
+            if (t === 'admin') listenToUsers();
+            render();
         };
 
         window.manualUpdateBalance = async (uid) => {
             const input = document.getElementById(`bal-${uid}`);
-            const amount = parseFloat(input.value);
-            if(isNaN(amount)) return alert("أدخل مبلغاً صحيحاً");
-            const user = allUsers.find(u => u.uid === uid);
-            const newBalance = (user.balance || 0) + amount;
-            await updateDoc(doc(db, 'artifacts', coreId, 'data', uid), { balance: parseFloat(newBalance.toFixed(2)) });
+            const val = parseFloat(input.value);
+            if (isNaN(val)) return alert("أدخل رقم صحيح");
+            const user = state.users.find(u => u.uid === uid);
+            await updateDoc(doc(db, 'artifacts', coreId, 'data', uid), { 
+                balance: parseFloat(((user.balance || 0) + val).toFixed(2)) 
+            });
             input.value = '';
-            alert("تم التحديث");
+            alert("تم تحديث الرصيد");
         };
 
-        window.setDiscount = async (id) => {
-            const percent = prompt("نسبة الخصم (مثلاً 20):");
-            const hours = prompt("مدة الخصم (بالساعات):");
-            if (percent && hours) {
-                const expires = Date.now() + (parseFloat(hours) * 3600000);
-                await updateDoc(doc(db, 'artifacts', coreId, 'products', id), {
-                    discount: { percent: parseInt(percent), expires }
-                });
-            }
-        };
-
-        window.addAccount = async () => {
+        window.addAccountToStock = async () => {
             const pid = document.getElementById('s-pid').value;
             const email = document.getElementById('s-email').value;
             const pass = document.getElementById('s-pass').value;
             const note = document.getElementById('s-note').value;
-            if(!pid || !email || !pass) return alert("الايميل والرمز مطلوبين");
+            if (!pid || !email || !pass) return alert("البيانات الأساسية مطلوبة");
             
-            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { 
-                stock: arrayUnion({ email, pass, note: note || "", id: Math.random().toString(36).substr(2, 9) }) 
+            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), {
+                stock: arrayUnion({ 
+                    id: Math.random().toString(36).substr(2, 9),
+                    email, pass, note: note || ""
+                })
             });
+            alert("تم شحن المخزن");
             document.getElementById('s-email').value = '';
             document.getElementById('s-pass').value = '';
             document.getElementById('s-note').value = '';
-            alert("تمت الإضافة");
         };
 
-        window.editStockItem = async (pid, accountId) => {
-            const p = allProducts.find(x => x.id === pid);
-            const idx = p.stock.findIndex(s => s.id === accountId);
+        window.editStockItem = async (pid, aid) => {
+            const p = state.products.find(x => x.id === pid);
+            const idx = p.stock.findIndex(s => s.id === aid);
             const s = p.stock[idx];
-            
-            const nEmail = prompt("تعديل البريد:", s.email);
-            const nPass = prompt("تعديل الرمز:", s.pass);
-            const nNote = prompt("تعديل الملاحظات:", s.note);
-            
-            if(nEmail && nPass) {
+            const nE = prompt("الايميل الجديد:", s.email);
+            const nP = prompt("الرمز الجديد:", s.pass);
+            const nN = prompt("الملاحظة الجديدة:", s.note);
+            if(nE && nP) {
                 let newStock = [...p.stock];
-                newStock[idx] = { ...s, email: nEmail, pass: nPass, note: nNote };
+                newStock[idx] = { ...s, email: nE, pass: nP, note: nN };
                 await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: newStock });
             }
         };
 
-        window.buy = async (pid) => {
-            const p = allProducts.find(x => x.id === pid);
-            if (!p || !p.stock?.length) return alert("نفدت الكمية");
-            
-            let price = p.price;
-            if (p.discount && p.discount.expires > Date.now()) {
-                price = p.price * (1 - p.discount.percent / 100);
-            }
+        window.deleteStockItem = async (pid, aid) => {
+            if(!confirm("حذف هذا الحساب؟")) return;
+            const p = state.products.find(x => x.id === pid);
+            const newStock = p.stock.filter(s => s.id !== aid);
+            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: newStock });
+        };
 
-            if (currentUser.balance < price) return alert("رصيدك غير كافٍ");
+        window.setDiscountHours = async (pid) => {
+            const p = prompt("نسبة الخصم %:");
+            const h = prompt("المدة بالساعات:");
+            if(p && h) {
+                const expires = Date.now() + (parseFloat(h) * 3600000);
+                await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), {
+                    discount: { percent: parseInt(p), expires }
+                });
+            }
+        };
+
+        window.buyProduct = async (pid) => {
+            const p = state.products.find(x => x.id === pid);
+            if (!p || !p.stock?.length) return alert("نفد من المخزن");
+            let finalPrice = p.price;
+            if (p.discount && p.discount.expires > Date.now()) {
+                finalPrice = p.price * (1 - p.discount.percent / 100);
+            }
+            if (state.user.balance < finalPrice) return alert("رصيدك غير كافٍ");
             if (!confirm(`شراء ${p.name}؟`)) return;
 
             const account = p.stock[0];
             const order = { ...account, productName: p.name, date: new Date().toLocaleString('ar-EG'), orderId: Math.random().toString(36).substr(2, 6).toUpperCase() };
-
-            await updateDoc(doc(db, 'artifacts', coreId, 'data', currentUser.uid), { 
-                balance: parseFloat((currentUser.balance - price).toFixed(2)),
+            
+            await updateDoc(doc(db, 'artifacts', coreId, 'data', state.user.uid), {
+                balance: parseFloat((state.user.balance - finalPrice).toFixed(2)),
                 orders: arrayUnion(order)
             });
             await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: arrayRemove(account) });
+            alert("تم الشراء بنجاح!");
         };
 
-        function getTimer(expires) {
+        function getTimerText(expires) {
             const diff = expires - Date.now();
             if (diff <= 0) return null;
             const h = Math.floor(diff / 3600000);
@@ -162,78 +182,80 @@
             return `${h}h ${m}m ${s}s`;
         }
 
-        setInterval(() => { if(activeTab === 'home') render(); }, 1000);
+        setInterval(() => { if(state.activeTab === 'home') render(); }, 1000);
 
         function render() {
-            if(!currentUser) return;
+            if (!state.user) return;
             const root = document.getElementById('app-view');
             root.innerHTML = '';
             
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-tab'));
-            document.getElementById(`nav-${activeTab}`)?.classList.add('active-tab');
+            document.getElementById(`nav-${state.activeTab}`)?.classList.add('active-tab');
 
-            if (activeTab === 'home') {
-                root.innerHTML = `<h2 class="text-2xl font-black mb-6">المنتجات</h2>`;
-                allProducts.forEach(p => {
-                    const hasDisc = p.discount && p.discount.expires > Date.now();
-                    const finalPrice = hasDisc ? p.price * (1 - p.discount.percent / 100) : p.price;
-                    const timer = hasDisc ? getTimer(p.discount.expires) : null;
+            if (state.activeTab === 'home') {
+                root.innerHTML = `<h2 class="text-2xl font-black mb-6">المتجر</h2>`;
+                state.products.forEach(p => {
+                    const hasD = p.discount && p.discount.expires > Date.now();
+                    const price = hasD ? p.price * (1 - p.discount.percent / 100) : p.price;
+                    const timer = hasD ? getTimerText(p.discount.expires) : null;
                     root.innerHTML += `
-                        <div class="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 mb-4 shadow-sm relative overflow-hidden">
-                            ${hasDisc ? `<div class="absolute top-0 left-0 bg-red-600 text-white text-[9px] px-3 py-1 rounded-br-xl font-bold italic animate-pulse">خصم ${p.discount.percent}%</div>` : ''}
+                        <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm mb-4 relative overflow-hidden">
+                            ${hasD ? `<div class="absolute top-0 left-0 bg-red-600 text-white text-[10px] px-3 py-1 rounded-br-2xl font-black italic">-${p.discount.percent}%</div>` : ''}
                             <div class="flex justify-between items-center">
                                 <div>
-                                    <div class="font-black text-slate-800 text-lg">${p.name}</div>
+                                    <div class="font-black text-slate-800">${p.name}</div>
                                     <div class="flex items-center gap-2 mt-2">
-                                        <span class="text-lg font-black text-slate-900">$${finalPrice.toFixed(2)}</span>
-                                        ${hasDisc ? `<span class="text-xs text-slate-300 line-through">$${p.price.toFixed(2)}</span>` : ''}
-                                        <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full font-bold">متبقي: ${p.stock?.length || 0}</span>
+                                        <span class="text-lg font-black text-slate-900">$${price.toFixed(2)}</span>
+                                        <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">المتبقي: ${p.stock?.length || 0}</span>
                                     </div>
-                                    ${timer ? `<div class="text-[9px] text-red-500 font-bold mt-2 flex items-center gap-1"><i data-lucide="timer" class="w-3 h-3"></i> ينتهي خلال: ${timer}</div>` : ''}
+                                    ${timer ? `<div class="text-[9px] text-red-500 font-bold mt-2 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${timer}</div>` : ''}
                                 </div>
-                                <button onclick="buy('${p.id}')" class="bg-slate-900 text-white px-6 py-4 rounded-3xl font-black text-xs">شراء</button>
+                                <button onclick="buyProduct('${p.id}')" class="bg-slate-900 text-white px-7 py-4 rounded-3xl font-black text-xs">شراء</button>
                             </div>
                         </div>`;
                 });
-            } else if (activeTab === 'orders') {
-                root.innerHTML = `<h2 class="text-2xl font-black mb-6 text-slate-800">مشترياتي</h2>`;
-                (currentUser.orders || []).slice().reverse().forEach(o => {
+            } else if (state.activeTab === 'orders') {
+                root.innerHTML = `<h2 class="text-2xl font-black mb-6">مشترياتي</h2>`;
+                (state.user.orders || []).slice().reverse().forEach(o => {
                     root.innerHTML += `
-                        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-50 mb-4 shadow-sm">
-                            <div class="flex justify-between border-b border-slate-50 pb-3 mb-3">
+                        <div class="bg-white p-6 rounded-[2.5rem] border mb-4 shadow-sm">
+                            <div class="flex justify-between mb-4 border-b pb-2">
                                 <span class="font-black text-sm">${o.productName}</span>
-                                <span class="text-[9px] text-slate-300 font-bold">${o.date}</span>
+                                <span class="text-[10px] text-slate-400">${o.date}</span>
                             </div>
                             <div class="space-y-2">
-                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">الايميل:</span><span class="font-black select-all">${o.email}</span></div>
-                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">الرمز:</span><span class="font-black select-all">${o.pass}</span></div>
-                                ${o.note ? `<div class="mt-2 p-2 bg-slate-50 rounded-xl text-[10px] text-blue-600 font-bold"><span class="text-slate-400">ملاحظة:</span> ${o.note}</div>` : ''}
+                                <div class="flex justify-between text-[11px]"><span class="text-slate-400 font-bold">الحساب:</span><span class="font-black select-all">${o.email}</span></div>
+                                <div class="flex justify-between text-[11px]"><span class="text-slate-400 font-bold">الرمز:</span><span class="font-black select-all">${o.pass}</span></div>
+                                ${o.note ? `<div class="mt-2 p-3 bg-blue-50 text-blue-600 text-[10px] rounded-2xl font-bold">ملاحظة: ${o.note}</div>` : ''}
                             </div>
                         </div>`;
                 });
-            } else if (activeTab === 'profile') {
+            } else if (state.activeTab === 'profile') {
                 root.innerHTML = `
-                    <div class="bg-white p-10 rounded-[3.5rem] border text-center">
-                        <div class="w-20 h-20 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-3xl font-black">${currentUser.email[0].toUpperCase()}</div>
-                        <h3 class="font-black text-slate-800">${currentUser.email}</h3>
+                    <div class="bg-white p-10 rounded-[3.5rem] border text-center shadow-sm">
+                        <div class="w-20 h-20 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-2xl font-black">${state.user.email[0].toUpperCase()}</div>
+                        <h3 class="font-black text-slate-800">${state.user.email}</h3>
                         <div class="mt-8 space-y-4">
-                            <a href="https://t.me/aboarenx" class="flex items-center justify-center gap-2 bg-slate-900 text-white p-5 rounded-3xl font-black text-sm"><i data-lucide="send" class="w-4 h-4"></i> شحن الرصيد</a>
-                            <button onclick="signOut(auth)" class="w-full p-4 text-red-400 font-black text-xs uppercase tracking-widest">تسجيل الخروج</button>
+                            <a href="https://t.me/aboarenx" class="flex items-center justify-center gap-2 bg-slate-900 text-white p-5 rounded-3xl font-black text-sm shadow-xl shadow-slate-200">شحن الرصيد تليجرام</a>
+                            <button onclick="signOut(auth)" class="w-full p-4 text-red-400 font-black text-xs">خروج</button>
                         </div>
                     </div>`;
-            } else if (activeTab === 'admin') {
+            } else if (state.activeTab === 'admin' && state.user.role === 'admin') {
                 root.innerHTML = `
-                    <div class="space-y-6 pb-24">
-                        <!-- إدارة المستخدمين -->
+                    <div class="space-y-4 pb-24">
+                        <!-- إدارة الرصيد -->
                         <div class="bg-white p-6 rounded-[2.5rem] border">
-                            <button onclick="showUsersSection = !showUsersSection; render();" class="w-full flex justify-between font-black text-xs text-slate-400 uppercase"><span>إدارة الرصيد (${allUsers.length})</span><i data-lucide="chevron-down"></i></button>
-                            ${showUsersSection ? `
-                                <div class="mt-4 space-y-2 max-h-64 overflow-y-auto">
-                                    ${allUsers.map(u => `
+                            <button onclick="toggleSection('users')" class="w-full flex justify-between font-black text-xs text-slate-400 uppercase">
+                                <span>إدارة رصيد المستخدمين</span>
+                                <i data-lucide="${state.sections.users ? 'chevron-up' : 'chevron-down'}"></i>
+                            </button>
+                            ${state.sections.users ? `
+                                <div class="mt-4 space-y-2 max-h-60 overflow-y-auto pr-1">
+                                    ${state.users.map(u => `
                                         <div class="flex justify-between items-center p-3 bg-slate-50 rounded-2xl">
                                             <div class="flex flex-col"><span class="text-[10px] font-black truncate w-32">${u.email}</span><span class="text-[10px] text-green-600 font-black">$${u.balance || 0}</span></div>
                                             <div class="flex gap-2">
-                                                <input id="bal-${u.uid}" type="number" placeholder="±" class="w-14 p-2 text-xs rounded-xl outline-none font-black text-center">
+                                                <input id="bal-${u.uid}" type="number" placeholder="±" class="w-14 p-2 text-xs rounded-xl font-black text-center outline-none">
                                                 <button onclick="manualUpdateBalance('${u.uid}')" class="bg-slate-900 text-white px-4 rounded-xl text-[10px] font-black">شحن</button>
                                             </div>
                                         </div>
@@ -242,61 +264,57 @@
                             ` : ''}
                         </div>
 
-                        <!-- تعديل الحسابات المخزنة -->
+                        <!-- تعديل المخزون -->
                         <div class="bg-white p-6 rounded-[2.5rem] border">
-                            <button onclick="showStockEditSection = !showStockEditSection; render();" class="w-full flex justify-between font-black text-xs text-slate-400 uppercase"><span>تعديل المخزن والاحتياطي</span><i data-lucide="chevron-down"></i></button>
-                            ${showStockEditSection ? `
+                            <button onclick="toggleSection('stockEdit')" class="w-full flex justify-between font-black text-xs text-slate-400 uppercase">
+                                <span>تعديل الحسابات (المخزون)</span>
+                                <i data-lucide="${state.sections.stockEdit ? 'chevron-up' : 'chevron-down'}"></i>
+                            </button>
+                            ${state.sections.stockEdit ? `
                                 <div class="mt-4 space-y-4">
-                                    ${allProducts.map(p => `
-                                        <div class="border-b pb-4">
+                                    ${state.products.map(p => `
+                                        <div class="border-b pb-3 mb-2 last:border-0">
                                             <div class="text-[10px] font-black text-slate-400 mb-2">${p.name}</div>
                                             ${p.stock?.map(s => `
                                                 <div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
-                                                    <div class="text-[9px] font-black truncate w-32">${s.email}</div>
+                                                    <span class="text-[9px] font-black truncate w-40">${s.email}</span>
                                                     <div class="flex gap-1">
                                                         <button onclick="editStockItem('${p.id}', '${s.id}')" class="p-1.5 bg-white rounded-lg text-blue-500 shadow-sm"><i data-lucide="edit" class="w-3 h-3"></i></button>
-                                                        <button onclick="deleteStockAccount('${p.id}', '${s.id}')" class="p-1.5 bg-white rounded-lg text-red-500 shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                                                        <button onclick="deleteStockItem('${p.id}', '${s.id}')" class="p-1.5 bg-white rounded-lg text-red-500 shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
                                                     </div>
                                                 </div>
-                                            `).join('') || '<div class="text-[9px]">فارغ</div>'}
+                                            `).join('') || '<div class="text-[9px] text-center">لا يوجد حسابات</div>'}
                                         </div>
                                     `).join('')}
                                 </div>
                             ` : ''}
                         </div>
 
-                        <!-- شحن المخزن الجديد -->
+                        <!-- شحن المخزن -->
                         <div class="bg-white p-6 rounded-[2.5rem] border">
                             <h3 class="text-xs font-black text-slate-400 mb-4 uppercase">شحن مخزن جديد</h3>
                             <div class="space-y-3">
-                                <select id="s-pid" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-black outline-none border-none appearance-none">
-                                    ${allProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-                                </select>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input id="s-email" placeholder="الايميل" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none">
-                                    <input id="s-pass" placeholder="الرمز" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none">
-                                </div>
-                                <input id="s-note" placeholder="ملاحظات / بريد احتياطي (اختياري)" class="w-full p-4 bg-slate-50 rounded-2xl text-xs outline-none">
-                                <button onclick="addAccount()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black">إضافة للحسابات</button>
+                                <select id="s-pid" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-black outline-none appearance-none">${state.products.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+                                <div class="grid grid-cols-2 gap-2"><input id="s-email" placeholder="الايميل" class="p-4 bg-slate-50 rounded-2xl text-xs"><input id="s-pass" placeholder="الرمز" class="p-4 bg-slate-50 rounded-2xl text-xs"></div>
+                                <input id="s-note" placeholder="ملاحظات / بريد احتياطي" class="w-full p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                <button onclick="addAccountToStock()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black">تأكيد الإضافة</button>
                             </div>
                         </div>
 
                         <!-- التحكم بالأصناف -->
-                        <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase">التحكم بالأصناف</h3>
-                            <div class="space-y-3">
-                                ${allProducts.map(p => `
+                        <div class="bg-white p-6 rounded-[2.5rem] border">
+                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase">الأصناف</h3>
+                            <div class="space-y-2">
+                                ${state.products.map(p => `
                                     <div class="p-3 bg-slate-50 rounded-2xl flex justify-between items-center">
-                                        <span class="text-xs font-black">${p.name} ($${p.price})</span>
+                                        <span class="text-[11px] font-black">${p.name} ($${p.price})</span>
                                         <div class="flex gap-1">
-                                            <button onclick="updateProductField('${p.id}', 'name')" class="p-2 bg-white rounded-xl shadow-sm"><i data-lucide="type" class="w-3 h-3"></i></button>
-                                            <button onclick="updateProductField('${p.id}', 'price')" class="p-2 bg-white rounded-xl shadow-sm"><i data-lucide="dollar-sign" class="w-3 h-3"></i></button>
-                                            <button onclick="setDiscount('${p.id}')" class="p-2 bg-orange-100 text-orange-600 rounded-xl shadow-sm"><i data-lucide="percent" class="w-3 h-3"></i></button>
-                                            <button onclick="deleteProduct('${p.id}')" class="p-2 bg-red-100 text-red-600 rounded-xl shadow-sm"><i data-lucide="trash" class="w-3 h-3"></i></button>
+                                            <button onclick="setDiscountHours('${p.id}')" class="p-2 bg-orange-100 text-orange-600 rounded-xl"><i data-lucide="percent" class="w-3 h-3"></i></button>
+                                            <button onclick="deleteDoc(doc(db, 'artifacts', coreId, 'products', '${p.id}'))" class="p-2 bg-red-100 text-red-600 rounded-xl"><i data-lucide="trash" class="w-3 h-3"></i></button>
                                         </div>
                                     </div>
                                 `).join('')}
-                                <div class="flex gap-2 pt-2"><input id="p-name" placeholder="اسم صنف" class="flex-1 p-3 bg-slate-50 rounded-xl text-xs"><input id="p-price" type="number" placeholder="$" class="w-16 p-3 bg-slate-50 rounded-xl text-xs"><button onclick="saveProduct()" class="bg-slate-900 text-white px-4 rounded-xl text-xs font-black">إضافة</button></div>
+                                <div class="flex gap-2 mt-4"><input id="pn" placeholder="الاسم" class="flex-1 p-3 bg-slate-50 rounded-xl text-xs"><input id="pp" type="number" placeholder="$" class="w-16 p-3 bg-slate-50 rounded-xl text-xs"><button onclick="saveNewProd()" class="bg-slate-900 text-white px-4 rounded-xl font-black text-xs">إضافة</button></div>
                             </div>
                         </div>
                     </div>`;
@@ -304,21 +322,9 @@
             lucide.createIcons();
         }
 
-        // Helpers
-        window.updateProductField = async (id, field) => {
-            const v = prompt(`أدخل ${field === 'name' ? 'الاسم' : 'السعر'}:`);
-            if(v) await updateDoc(doc(db, 'artifacts', coreId, 'products', id), { [field]: field === 'price' ? parseFloat(v) : v });
-        };
-        window.deleteProduct = async (id) => { if(confirm("حذف الصنف؟")) await deleteDoc(doc(db, 'artifacts', coreId, 'products', id)); };
-        window.deleteStockAccount = async (pid, aid) => {
-            if(!confirm("حذف الحساب؟")) return;
-            const p = allProducts.find(x => x.id === pid);
-            const nS = p.stock.filter(s => s.id !== aid);
-            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: nS });
-        };
-        window.saveProduct = async () => {
-            const n = document.getElementById('p-name').value;
-            const p = parseFloat(document.getElementById('p-price').value);
+        window.saveNewProd = async () => {
+            const n = document.getElementById('pn').value;
+            const p = parseFloat(document.getElementById('pp').value);
             if(n && p) {
                 const ref = doc(collection(db, 'artifacts', coreId, 'products'));
                 await setDoc(ref, { id: ref.id, name: n, price: p, stock: [] });
@@ -327,8 +333,9 @@
 
         window.login = async () => {
             try { await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); }
-            catch(e) { alert("خطأ في تسجيل الدخول"); }
+            catch(e) { alert("خطأ في البيانات"); }
         };
+
         window.register = async () => {
             try { await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); }
             catch(e) { alert("فشل التسجيل"); }
@@ -340,30 +347,30 @@
         ::-webkit-scrollbar { display: none; }
         .nav-btn { color: #CBD5E1; transition: 0.3s; }
         .active-tab { color: #0F172A; transform: translateY(-3px); }
-        input[type="number"]::-webkit-inner-spin-button { display: none; }
+        input { border: none !important; outline: none !important; }
     </style>
 </head>
 <body class="select-none text-slate-900">
-    <div id="loader" class="fixed inset-0 bg-white z-[300] flex items-center justify-center font-black text-slate-400">ArenStore...</div>
+    <div id="loader" class="fixed inset-0 bg-white z-[300] flex items-center justify-center font-black text-slate-300">ArenStore...</div>
 
     <div id="auth-page" class="fixed inset-0 bg-[#FBFBFE] z-[200] flex items-center justify-center p-6 hidden">
         <div class="w-full max-w-sm">
-            <div id="login-form" class="bg-white p-10 rounded-[3.5rem] shadow-sm border">
+            <div id="login-form" class="bg-white p-10 rounded-[3.5rem] border shadow-sm">
                 <h3 class="font-black text-2xl mb-8">ArenStore</h3>
                 <div class="space-y-4">
-                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
-                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
+                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
+                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
                     <button onclick="login()" class="w-full bg-slate-900 text-white p-5 rounded-[1.8rem] font-black">دخول</button>
-                    <button onclick="document.getElementById('login-form').classList.add('hidden'); document.getElementById('reg-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 text-center">إنشاء حساب جديد</button>
+                    <button onclick="document.getElementById('login-form').classList.add('hidden'); document.getElementById('reg-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 text-center uppercase tracking-widest">إنشاء حساب</button>
                 </div>
             </div>
-            <div id="reg-form" class="bg-white p-10 rounded-[3.5rem] shadow-sm border hidden">
+            <div id="reg-form" class="bg-white p-10 rounded-[3.5rem] border shadow-sm hidden">
                 <h3 class="font-black text-2xl mb-8">حساب جديد</h3>
                 <div class="space-y-4">
-                    <input id="r-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
-                    <input id="r-pass" type="password" placeholder="كلمة المرور" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
+                    <input id="r-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
+                    <input id="r-pass" type="password" placeholder="كلمة المرور" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
                     <button onclick="register()" class="w-full bg-slate-900 text-white p-5 rounded-[1.8rem] font-black">تسجيل</button>
-                    <button onclick="document.getElementById('reg-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 text-center tracking-widest uppercase">عودة للدخول</button>
+                    <button onclick="document.getElementById('reg-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 text-center uppercase tracking-widest">العودة</button>
                 </div>
             </div>
         </div>
@@ -379,9 +386,9 @@
 
         <nav class="fixed bottom-8 left-8 right-8 max-w-lg mx-auto bg-white/95 backdrop-blur-2xl border rounded-[2.8rem] p-2 flex justify-around shadow-2xl z-50">
             <button onclick="setTab('home')" id="nav-home" class="nav-btn p-4 active-tab"><i data-lucide="layout-grid"></i></button>
-            <button onclick="setTab('orders')" id="nav-orders" class="nav-btn p-4"><i data-lucide="shopping-bag"></i></button>
+            <button onclick="setTab('orders')" id="nav-orders" class="nav-btn p-4"><i data-lucide="package"></i></button>
             <button onclick="setTab('profile')" id="nav-profile" class="nav-btn p-4"><i data-lucide="user"></i></button>
-            <button id="admin-nav-btn" onclick="setTab('admin')" id="nav-admin" class="nav-btn p-4 text-slate-900" style="display:none;"><i data-lucide="shield"></i></button>
+            <button id="admin-nav-btn" onclick="setTab('admin')" id="nav-admin" class="nav-btn p-4 text-slate-900" style="display:none;"><i data-lucide="shield-check"></i></button>
         </nav>
     </div>
 </body>
