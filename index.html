@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ArenStore | نسخة الإدارة الاحترافية</title>
+    <title>ArenStore | المتجر المتكامل</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -26,7 +26,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const coreId = "aren_premium_v6"; // الحفاظ على نفس المعرف لضمان عدم فقدان البيانات
+        const coreId = "aren_premium_v6"; 
 
         let currentUser = null;
         let allProducts = [];
@@ -41,6 +41,7 @@
             } else {
                 document.getElementById('auth-page').classList.remove('hidden');
                 document.getElementById('loader').classList.add('hidden');
+                document.getElementById('admin-nav-btn').style.display = 'none';
             }
         });
 
@@ -49,8 +50,7 @@
                 if (snap.exists()) {
                     currentUser = snap.data();
                     document.getElementById('balance-display').innerText = `$${(currentUser.balance || 0).toFixed(2)}`;
-                    const adminBtn = document.getElementById('admin-nav-btn');
-                    adminBtn.style.display = currentUser.role === 'admin' ? 'flex' : 'none';
+                    document.getElementById('admin-nav-btn').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
                 }
                 document.getElementById('loader').classList.add('hidden');
                 render();
@@ -62,7 +62,7 @@
             render();
         });
 
-        // ميزات الإدارة
+        // ميزات الإدارة (تعديل السعر والاسم)
         window.updateProductField = async (id, field) => {
             const newValue = prompt(`أدخل ${field === 'name' ? 'الاسم الجديد' : 'السعر الجديد'}:`);
             if (newValue) {
@@ -72,14 +72,37 @@
         };
 
         window.setDiscount = async (id) => {
-            const percent = prompt("نسبة الخصم (مثلاً 20):");
-            const duration = prompt("مدة الخصم بالدقائق (مثلاً 60):");
+            const percent = prompt("نسبة الخصم (٪):");
+            const duration = prompt("المدة بالدقائق:");
             if (percent && duration) {
                 const endTime = Date.now() + (parseInt(duration) * 60000);
                 await updateDoc(doc(db, 'artifacts', coreId, 'products', id), {
                     discount: { percent: parseInt(percent), expires: endTime }
                 });
             }
+        };
+
+        window.saveProduct = async () => {
+            const name = document.getElementById('p-name').value;
+            const price = parseFloat(document.getElementById('p-price').value);
+            if(!name || isNaN(price)) return;
+            const newRef = doc(collection(db, 'artifacts', coreId, 'products'));
+            await setDoc(newRef, { id: newRef.id, name, price, stock: [] });
+            document.getElementById('p-name').value = '';
+            document.getElementById('p-price').value = '';
+        };
+
+        window.addAccount = async () => {
+            const pid = document.getElementById('s-pid').value;
+            const email = document.getElementById('s-email').value;
+            const pass = document.getElementById('s-pass').value;
+            if(!pid || !email || !pass) return alert("أكمل البيانات");
+            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { 
+                stock: arrayUnion({ email, pass, addedAt: Date.now() }) 
+            });
+            document.getElementById('s-email').value = '';
+            document.getElementById('s-pass').value = '';
+            alert("تم الشحن");
         };
 
         window.buy = async (pid) => {
@@ -105,16 +128,6 @@
             setTab('orders');
         };
 
-        window.setTab = (t) => { activeTab = t; if(t === 'admin') listenUsers(); render(); };
-
-        function listenUsers() {
-            onSnapshot(collection(db, 'artifacts', coreId, 'data'), (snap) => {
-                allUsers = snap.docs.map(d => d.data());
-                render();
-            });
-        }
-
-        // دالة العداد التنازلي
         function getTimerText(expires) {
             const diff = expires - Date.now();
             if (diff <= 0) return null;
@@ -125,6 +138,15 @@
 
         setInterval(() => { if(activeTab === 'home') render(); }, 1000);
 
+        window.setTab = (t) => { activeTab = t; if(t === 'admin') listenUsers(); render(); };
+
+        function listenUsers() {
+            onSnapshot(collection(db, 'artifacts', coreId, 'data'), (snap) => {
+                allUsers = snap.docs.map(d => d.data());
+                render();
+            });
+        }
+
         function render() {
             if(!currentUser) return;
             const root = document.getElementById('app-view');
@@ -134,25 +156,27 @@
             document.getElementById(`nav-${activeTab}`)?.classList.add('active-tab');
 
             if (activeTab === 'home') {
-                root.innerHTML = `<h2 class="text-2xl font-black mb-6 flex items-center gap-3"><i data-lucide="layout-grid"></i> المنتجات</h2>`;
+                root.innerHTML = `<h2 class="text-2xl font-black mb-6 flex items-center gap-3 text-slate-800"><i data-lucide="layout-grid"></i> المنتجات</h2>`;
                 allProducts.forEach(p => {
                     let hasDiscount = p.discount && p.discount.expires > Date.now();
                     let finalPrice = hasDiscount ? p.price * (1 - p.discount.percent / 100) : p.price;
                     let timer = hasDiscount ? getTimerText(p.discount.expires) : null;
+                    let stockCount = p.stock ? p.stock.length : 0;
 
                     root.innerHTML += `
-                        <div class="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 mb-5 relative overflow-hidden shadow-sm">
-                            ${hasDiscount ? `<div class="absolute top-0 left-0 bg-red-500 text-white text-[9px] font-black px-4 py-1 rounded-br-2xl animate-pulse italic">عرض حصري -${p.discount.percent}%</div>` : ''}
-                            <div class="flex justify-between items-center">
+                        <div class="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 mb-5 relative overflow-hidden shadow-sm transition-all hover:shadow-md">
+                            ${hasDiscount ? `<div class="absolute top-0 left-0 bg-red-500 text-white text-[9px] font-black px-4 py-1.5 rounded-br-2xl animate-pulse italic z-10">عرض حصري -${p.discount.percent}%</div>` : ''}
+                            <div class="flex justify-between items-center relative z-0">
                                 <div class="flex-1">
-                                    <div class="font-black text-slate-800">${p.name}</div>
-                                    <div class="flex items-center gap-2 mt-2">
+                                    <div class="font-black text-slate-800 text-base">${p.name}</div>
+                                    <div class="flex items-center gap-2 mt-3 flex-wrap">
                                         ${hasDiscount ? `<span class="text-xs text-slate-300 line-through">$${p.price.toFixed(2)}</span>` : ''}
-                                        <span class="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1 rounded-xl">$${finalPrice.toFixed(2)}</span>
-                                        ${timer ? `<span class="text-[9px] text-red-500 font-bold flex items-center gap-1"><i data-lucide="timer" class="w-3 h-3"></i> ${timer}</span>` : ''}
+                                        <span class="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1.5 rounded-xl">$${finalPrice.toFixed(2)}</span>
+                                        <span class="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold">متوفر: ${stockCount}</span>
+                                        ${timer ? `<span class="text-[10px] text-red-500 font-bold flex items-center gap-1 bg-red-50 px-3 py-1 rounded-full"><i data-lucide="timer" class="w-3 h-3"></i> ${timer}</span>` : ''}
                                     </div>
                                 </div>
-                                <button onclick="buy('${p.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl text-[11px] font-black">اطلب الآن</button>
+                                <button onclick="buy('${p.id}')" class="bg-slate-900 text-white px-7 py-4 rounded-3xl text-[11px] font-black shadow-lg shadow-slate-100 active:scale-95 transition-all">شراء</button>
                             </div>
                         </div>`;
                 });
@@ -160,42 +184,68 @@
                 root.innerHTML = `<h2 class="text-2xl font-black mb-6 flex items-center gap-3"><i data-lucide="package-check"></i> مشترياتي</h2>`;
                 (currentUser.orders || []).slice().reverse().forEach(o => {
                     root.innerHTML += `
-                        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-50 mb-4 shadow-sm">
-                            <div class="flex justify-between border-b pb-3 mb-3 border-slate-50">
-                                <div class="font-black text-sm">${o.productName}</div>
-                                <div class="text-[9px] text-slate-400 font-bold">${o.purchaseDate}</div>
+                        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-50 mb-4 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                            <div class="flex justify-between border-b pb-4 mb-4 border-slate-50">
+                                <div><div class="font-black text-sm">${o.productName}</div><div class="text-[8px] text-slate-300 font-bold mt-1 uppercase">ID: ${o.orderId}</div></div>
+                                <div class="text-[9px] text-slate-400 font-bold bg-slate-50 px-3 py-1 rounded-full h-fit">${o.purchaseDate}</div>
                             </div>
                             <div class="space-y-2">
-                                <div class="flex justify-between bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-400">اليوزر:</span><span class="text-[11px] font-black select-all">${o.email}</span></div>
-                                <div class="flex justify-between bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-400">الباسورد:</span><span class="text-[11px] font-black select-all">${o.pass}</span></div>
+                                <div class="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl"><span class="text-[10px] text-slate-400 font-bold">الحساب:</span><span class="text-[11px] font-black text-slate-700 select-all">${o.email}</span></div>
+                                <div class="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl"><span class="text-[10px] text-slate-400 font-bold">الرمز:</span><span class="text-[11px] font-black text-slate-700 select-all">${o.pass}</span></div>
                             </div>
                         </div>`;
                 });
             } else if (activeTab === 'profile') {
                 root.innerHTML = `
-                    <div class="bg-white p-10 rounded-[3rem] border border-slate-50 text-center">
-                        <div class="w-20 h-20 bg-slate-900 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-black">${currentUser.email[0].toUpperCase()}</div>
-                        <h3 class="font-black">${currentUser.email}</h3>
-                        <div class="mt-8 space-y-3">
-                            <a href="https://t.me/aboarenx" class="flex items-center justify-center gap-2 bg-slate-900 text-white p-4 rounded-2xl font-black text-sm"><i data-lucide="message-circle" class="w-4 h-4"></i> شحن الرصيد</a>
-                            <button onclick="signOut(auth)" class="w-full bg-red-50 text-red-400 p-4 rounded-2xl font-black text-xs">خروج</button>
+                    <div class="bg-white p-12 rounded-[3.5rem] border border-slate-50 text-center shadow-sm">
+                        <div class="w-24 h-24 bg-slate-900 text-white rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-3xl font-black rotate-3 shadow-xl">${currentUser.email[0].toUpperCase()}</div>
+                        <h3 class="font-black text-slate-900 text-lg">${currentUser.email}</h3>
+                        <div class="mt-10 space-y-4">
+                            <a href="https://t.me/aboarenx" class="flex items-center justify-center gap-3 bg-slate-900 text-white p-5 rounded-3xl font-black text-sm shadow-xl shadow-slate-100 active:scale-95 transition-all"><i data-lucide="message-circle" class="w-5 h-5"></i> شحن الرصيد</a>
+                            <button onclick="signOut(auth)" class="w-full bg-red-50 text-red-400 p-5 rounded-3xl font-black text-xs border border-red-100">خروج آمن</button>
                         </div>
                     </div>`;
             } else if (activeTab === 'admin' && currentUser.role === 'admin') {
                 root.innerHTML = `
-                    <div class="space-y-4 pb-20">
+                    <div class="space-y-6 pb-24">
+                        <!-- إضافة صنف جديد -->
                         <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase">إدارة المنتجات والعروض</h3>
+                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase tracking-widest">إضافة صنف جديد</h3>
+                            <div class="flex gap-2">
+                                <input id="p-name" placeholder="اسم المنتج" class="flex-1 p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                <input id="p-price" type="number" step="0.1" placeholder="$" class="w-20 p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                            </div>
+                            <button onclick="saveProduct()" class="w-full bg-slate-900 text-white p-4 mt-3 rounded-2xl font-black">حفظ الصنف</button>
+                        </div>
+
+                        <!-- شحن المخزن -->
+                        <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
+                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase tracking-widest">شحن المخزن</h3>
+                            <div class="space-y-2">
+                                <select id="s-pid" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-black outline-none border-none">
+                                    ${allProducts.map(p => `<option value="${p.id}">${p.name} (متوفر: ${p.stock?.length || 0})</option>`).join('')}
+                                </select>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input id="s-email" placeholder="الايميل" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                    <input id="s-pass" placeholder="الرمز" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none">
+                                </div>
+                                <button onclick="addAccount()" class="w-full bg-green-600 text-white p-4 rounded-2xl font-black">إضافة الحساب</button>
+                            </div>
+                        </div>
+
+                        <!-- إدارة المنتجات الحالية -->
+                        <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
+                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase tracking-widest">إدارة المنتجات القائمة</h3>
                             <div class="space-y-3">
                                 ${allProducts.map(p => `
-                                    <div class="p-4 bg-slate-50 rounded-2xl flex flex-col gap-3">
-                                        <div class="flex justify-between items-center">
-                                            <span class="font-black text-xs">${p.name} ($${p.price})</span>
+                                    <div class="p-4 bg-slate-50 rounded-2xl">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <span class="font-black text-xs text-slate-700 truncate w-32">${p.name} ($${p.price})</span>
                                             <div class="flex gap-1">
-                                                <button onclick="updateProductField('${p.id}', 'name')" class="p-2 bg-white rounded-lg"><i data-lucide="edit-3" class="w-3 h-3"></i></button>
-                                                <button onclick="updateProductField('${p.id}', 'price')" class="p-2 bg-white rounded-lg"><i data-lucide="dollar-sign" class="w-3 h-3"></i></button>
-                                                <button onclick="setDiscount('${p.id}')" class="p-2 bg-orange-100 text-orange-600 rounded-lg"><i data-lucide="percent" class="w-3 h-3"></i></button>
-                                                <button onclick="deleteProduct('${p.id}')" class="p-2 bg-red-100 text-red-600 rounded-lg"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                                                <button onclick="updateProductField('${p.id}', 'name')" class="p-2 bg-white rounded-xl shadow-sm"><i data-lucide="edit-3" class="w-3 h-3"></i></button>
+                                                <button onclick="updateProductField('${p.id}', 'price')" class="p-2 bg-white rounded-xl shadow-sm"><i data-lucide="dollar-sign" class="w-3 h-3"></i></button>
+                                                <button onclick="setDiscount('${p.id}')" class="p-2 bg-orange-100 text-orange-600 rounded-xl shadow-sm"><i data-lucide="percent" class="w-3 h-3"></i></button>
+                                                <button onclick="deleteProduct('${p.id}')" class="p-2 bg-red-100 text-red-600 rounded-xl shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -203,16 +253,17 @@
                             </div>
                         </div>
 
+                        <!-- إدارة المستخدمين -->
                         <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                            <button onclick="showUsersList = !showUsersList; render();" class="w-full flex justify-between font-black text-xs uppercase"><span>إدارة الرصيد</span><i data-lucide="chevron-down"></i></button>
+                            <button onclick="showUsersList = !showUsersList; render();" class="w-full flex justify-between font-black text-xs uppercase text-slate-400"><span>إدارة رصيد المستخدمين</span><i data-lucide="chevron-down"></i></button>
                             ${showUsersList ? `
-                                <div class="mt-4 space-y-2">
+                                <div class="mt-4 space-y-2 max-h-60 overflow-y-auto pr-1">
                                     ${allUsers.map(u => `
-                                        <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                                            <span class="text-[10px] truncate w-24">${u.email}</span>
+                                        <div class="flex justify-between items-center p-3 bg-slate-50 rounded-2xl">
+                                            <span class="text-[10px] font-bold truncate w-24">${u.email}</span>
                                             <div class="flex gap-2">
-                                                <input id="bal-${u.uid}" type="number" placeholder="$" class="w-12 p-1 text-[10px] rounded border">
-                                                <button onclick="manualUpdateBalance('${u.uid}')" class="bg-slate-900 text-white px-3 py-1 rounded text-[9px]">شحن</button>
+                                                <input id="bal-${u.uid}" type="number" placeholder="$" class="w-14 p-2 text-[10px] rounded-xl border-none outline-none font-black">
+                                                <button onclick="manualUpdateBalance('${u.uid}')" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-[9px] font-black">شحن</button>
                                             </div>
                                         </div>
                                     `).join('')}
@@ -232,73 +283,85 @@
             alert("تم التحديث");
         };
 
-        window.deleteProduct = async (id) => { if(confirm("حذف؟")) await deleteDoc(doc(db, 'artifacts', coreId, 'products', id)); };
+        window.deleteProduct = async (id) => { if(confirm("حذف المنتج نهائياً؟")) await deleteDoc(doc(db, 'artifacts', coreId, 'products', id)); };
 
-        // Auth Functions
         window.login = async () => {
-            try { await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); }
-            catch(e) { alert("خطأ في البيانات"); }
+            const e = document.getElementById('l-email').value;
+            const p = document.getElementById('l-pass').value;
+            if(!e || !p) return;
+            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { alert("خطأ في تسجيل الدخول"); }
         };
 
         window.register = async () => {
-            try { await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); }
-            catch(e) { alert("فشل التسجيل"); }
+            const e = document.getElementById('r-email').value;
+            const p = document.getElementById('r-pass').value;
+            if(!e || !p) return;
+            try { await createUserWithEmailAndPassword(auth, e, p); } catch(err) { alert("فشل إنشاء الحساب"); }
         };
 
     </script>
     <style>
         body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; background: #FBFBFE; }
         ::-webkit-scrollbar { display: none; }
-        .nav-btn { color: #CBD5E1; transition: all 0.3s; }
-        .active-tab { color: #0F172A; transform: translateY(-3px); }
-        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+        .nav-btn { color: #CBD5E1; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .active-tab { color: #0F172A; transform: translateY(-4px); }
+        input, select { border: none !important; }
+        .animate-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="select-none text-slate-900">
 
     <div id="loader" class="fixed inset-0 bg-white z-[300] flex flex-col items-center justify-center font-black text-slate-300 uppercase tracking-widest text-[10px]">
-        <div class="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
-        جاري التحميل
+        <div class="w-12 h-12 border-[3px] border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
+        ArenStore
     </div>
 
     <!-- Auth System -->
     <div id="auth-page" class="fixed inset-0 bg-[#FBFBFE] z-[200] flex items-center justify-center p-6 hidden">
         <div class="w-full max-w-sm">
+            <div class="text-center mb-10">
+                <div class="w-24 h-24 bg-white rounded-[3rem] flex items-center justify-center mx-auto mb-6 shadow-2xl border border-slate-50 rotate-3">
+                    <i data-lucide="shopping-bag" class="text-slate-900 w-12 h-12"></i>
+                </div>
+                <h2 class="text-4xl font-black text-slate-900 tracking-tighter">ArenStore</h2>
+            </div>
+
             <div id="login-form" class="bg-white p-10 rounded-[3.5rem] shadow-sm border border-slate-50">
-                <h3 class="font-black text-2xl mb-8">ArenStore</h3>
+                <h3 class="font-black text-xl mb-6 text-slate-800">تسجيل دخول</h3>
                 <div class="space-y-4">
-                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none border-none">
-                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none border-none">
-                    <button onclick="login()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black">دخول</button>
-                    <button onclick="document.getElementById('login-form').classList.add('hidden'); document.getElementById('reg-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 uppercase">إنشاء حساب جديد</button>
+                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
+                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
+                    <button onclick="login()" class="w-full bg-slate-900 text-white p-5 rounded-[1.8rem] font-black text-base shadow-xl">دخول</button>
+                    <button onclick="document.getElementById('login-form').classList.add('hidden'); document.getElementById('reg-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[11px] mt-6 uppercase tracking-widest text-center">عضوية جديدة</button>
                 </div>
             </div>
+
             <div id="reg-form" class="bg-white p-10 rounded-[3.5rem] shadow-sm border border-slate-50 hidden">
-                <h3 class="font-black text-2xl mb-8">تسجيل جديد</h3>
+                <h3 class="font-black text-xl mb-6 text-slate-800">إنشاء حساب</h3>
                 <div class="space-y-4">
-                    <input id="r-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none border-none">
-                    <input id="r-pass" type="password" placeholder="كلمة المرور" class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none border-none">
-                    <button onclick="register()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black">تأكيد</button>
-                    <button onclick="document.getElementById('reg-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 uppercase">لديك حساب؟ سجل</button>
+                    <input id="r-email" type="email" placeholder="بريدك الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
+                    <input id="r-pass" type="password" placeholder="كلمة سر قوية" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold outline-none">
+                    <button onclick="register()" class="w-full bg-slate-900 text-white p-5 rounded-[1.8rem] font-black text-base shadow-xl">تأكيد الحساب</button>
+                    <button onclick="document.getElementById('reg-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[11px] mt-6 uppercase tracking-widest text-center">لديك حساب؟ سجل</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="max-w-lg mx-auto min-h-screen relative">
-        <header class="p-8 sticky top-0 z-40 flex justify-between items-center bg-white/80 backdrop-blur-xl">
+        <header class="p-8 sticky top-0 z-40 flex justify-between items-center bg-white/80 backdrop-blur-2xl">
             <h1 class="font-black text-2xl tracking-tighter">ArenStore</h1>
-            <div id="balance-display" class="bg-slate-900 text-white px-6 py-2 rounded-2xl font-black text-sm">$0.00</div>
+            <div id="balance-display" class="bg-slate-900 text-white px-7 py-2.5 rounded-2xl font-black text-sm shadow-xl shadow-slate-200">$0.00</div>
         </header>
 
         <main id="app-view" class="p-8 pb-32"></main>
 
-        <nav class="fixed bottom-8 left-8 right-8 max-w-lg mx-auto bg-white/90 backdrop-blur-xl border rounded-[2.8rem] p-2 flex justify-around shadow-2xl z-50">
-            <button onclick="setTab('home')" id="nav-home" class="nav-btn p-4 active-tab"><i data-lucide="grid-3x3"></i></button>
-            <button onclick="setTab('orders')" id="nav-orders" class="nav-btn p-4"><i data-lucide="hard-drive"></i></button>
-            <button onclick="setTab('profile')" id="nav-profile" class="nav-btn p-4"><i data-lucide="user-round"></i></button>
-            <button id="admin-nav-btn" onclick="setTab('admin')" id="nav-admin" class="nav-btn p-4 text-red-500" style="display:none;"><i data-lucide="shield-check"></i></button>
+        <nav class="fixed bottom-8 left-8 right-8 max-w-lg mx-auto bg-white/95 backdrop-blur-2xl border border-white/50 rounded-[2.8rem] p-2 flex justify-around shadow-2xl z-50">
+            <button onclick="setTab('home')" id="nav-home" class="nav-btn p-4 active-tab"><i data-lucide="grid-3x3" class="w-6 h-6"></i></button>
+            <button onclick="setTab('orders')" id="nav-orders" class="nav-btn p-4"><i data-lucide="hard-drive" class="w-6 h-6"></i></button>
+            <button onclick="setTab('profile')" id="nav-profile" class="nav-btn p-4"><i data-lucide="user-round" class="w-6 h-6"></i></button>
+            <button id="admin-nav-btn" onclick="setTab('admin')" id="nav-admin" class="nav-btn p-4 text-slate-900" style="display:none;"><i data-lucide="shield-check" class="w-6 h-6"></i></button>
         </nav>
     </div>
 </body>
