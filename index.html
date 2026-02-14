@@ -1,396 +1,168 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ArenStore | المتجر المتكامل</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import React, { useState } from 'react';
+import { Heart, CloudRain, ArrowRight, HeartHandshake, Sparkles, Lock } from 'lucide-react';
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyCrLUiTNZL3vJ10RzqQVBC2UUMlhQRmB18",
-          authDomain: "arenstore-71e49.firebaseapp.com",
-          projectId: "arenstore-71e49",
-          storageBucket: "arenstore-71e49.firebasestorage.app",
-          messagingSenderId: "221262833085",
-          appId: "1:221262833085:web:1b5eede5a15b1a9e53ded4",
-          measurementId: "G-8W3Q9L7ZRB"
-        };
+const App = () => {
+  const [scene, setScene] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [kissInput, setKissInput] = useState('');
+  const [error, setError] = useState(false);
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const coreId = "aren_premium_v6"; 
+  const changeScene = (newScene) => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setScene(newScene);
+      setIsAnimating(false);
+    }, 800);
+  };
 
-        let state = {
-            user: null,
-            products: [],
-            users: [],
-            activeTab: 'home',
-            sections: {
-                users: false,
-                stockEdit: false
-            }
-        };
+  const checkKiss = () => {
+    const validKisses = ['مح', 'محح', 'ممحح', 'ممححح', 'اموح', 'مواح'];
+    if (validKisses.includes(kissInput.trim())) {
+      changeScene(4);
+    } else {
+      setError(true);
+      setKissInput('');
+      setTimeout(() => setError(false), 2000);
+    }
+  };
 
-        // Auth
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                syncUserData(user.uid);
-                document.getElementById('auth-page').classList.add('hidden');
-            } else {
-                document.getElementById('auth-page').classList.remove('hidden');
-                document.getElementById('loader').classList.add('hidden');
-            }
-        });
+  return (
+    <div className={`min-h-screen transition-all duration-1000 ease-in-out flex flex-col items-center justify-center p-6 text-center overflow-hidden
+      ${scene === 0 ? 'bg-black text-gray-400' : ''}
+      ${scene === 1 ? 'bg-[#0f172a] text-blue-100' : ''}
+      ${scene === 2 ? 'bg-[#1e1b4b] text-pink-100' : ''}
+      ${scene === 3 ? 'bg-[#f8fafc] text-slate-900' : ''}
+      ${scene === 4 ? 'bg-gradient-to-br from-red-600 to-rose-500 text-white' : ''}
+    `}>
+      
+      {/* Cinematic Transition Overlay */}
+      <div className={`fixed inset-0 bg-black z-50 transition-opacity duration-1000 pointer-events-none ${isAnimating ? 'opacity-100' : 'opacity-0'}`} />
 
-        async function syncUserData(uid) {
-            onSnapshot(doc(db, 'artifacts', coreId, 'data', uid), (snap) => {
-                if (snap.exists()) {
-                    state.user = { uid, ...snap.data() };
-                    document.getElementById('balance-display').innerText = `$${(state.user.balance || 0).toFixed(2)}`;
-                    document.getElementById('admin-nav-btn').style.display = state.user.role === 'admin' ? 'flex' : 'none';
-                } else {
-                    setDoc(doc(db, 'artifacts', coreId, 'data', uid), { email: auth.currentUser.email, balance: 0, role: 'user', orders: [], uid });
-                }
-                document.getElementById('loader').classList.add('hidden');
-                render();
-            });
-        }
-
-        // Global Listeners
-        onSnapshot(collection(db, 'artifacts', coreId, 'products'), (snap) => {
-            state.products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            render();
-        });
-
-        function listenToUsers() {
-            onSnapshot(collection(db, 'artifacts', coreId, 'data'), (snap) => {
-                state.users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-                render();
-            });
-        }
-
-        // Exposed Functions
-        window.toggleSection = (section) => {
-            state.sections[section] = !state.sections[section];
-            render();
-        };
-
-        window.setTab = (t) => {
-            state.activeTab = t;
-            if (t === 'admin') listenToUsers();
-            render();
-        };
-
-        window.manualUpdateBalance = async (uid) => {
-            const input = document.getElementById(`bal-${uid}`);
-            const val = parseFloat(input.value);
-            if (isNaN(val)) return alert("أدخل رقم صحيح");
-            const user = state.users.find(u => u.uid === uid);
-            await updateDoc(doc(db, 'artifacts', coreId, 'data', uid), { 
-                balance: parseFloat(((user.balance || 0) + val).toFixed(2)) 
-            });
-            input.value = '';
-            alert("تم تحديث الرصيد");
-        };
-
-        window.addAccountToStock = async () => {
-            const pid = document.getElementById('s-pid').value;
-            const email = document.getElementById('s-email').value;
-            const pass = document.getElementById('s-pass').value;
-            const note = document.getElementById('s-note').value;
-            if (!pid || !email || !pass) return alert("البيانات الأساسية مطلوبة");
-            
-            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), {
-                stock: arrayUnion({ 
-                    id: Math.random().toString(36).substr(2, 9),
-                    email, pass, note: note || ""
-                })
-            });
-            alert("تم شحن المخزن");
-            document.getElementById('s-email').value = '';
-            document.getElementById('s-pass').value = '';
-            document.getElementById('s-note').value = '';
-        };
-
-        window.editStockItem = async (pid, aid) => {
-            const p = state.products.find(x => x.id === pid);
-            const idx = p.stock.findIndex(s => s.id === aid);
-            const s = p.stock[idx];
-            const nE = prompt("الايميل الجديد:", s.email);
-            const nP = prompt("الرمز الجديد:", s.pass);
-            const nN = prompt("الملاحظة الجديدة:", s.note);
-            if(nE && nP) {
-                let newStock = [...p.stock];
-                newStock[idx] = { ...s, email: nE, pass: nP, note: nN };
-                await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: newStock });
-            }
-        };
-
-        window.deleteStockItem = async (pid, aid) => {
-            if(!confirm("حذف هذا الحساب؟")) return;
-            const p = state.products.find(x => x.id === pid);
-            const newStock = p.stock.filter(s => s.id !== aid);
-            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: newStock });
-        };
-
-        window.setDiscountHours = async (pid) => {
-            const p = prompt("نسبة الخصم %:");
-            const h = prompt("المدة بالساعات:");
-            if(p && h) {
-                const expires = Date.now() + (parseFloat(h) * 3600000);
-                await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), {
-                    discount: { percent: parseInt(p), expires }
-                });
-            }
-        };
-
-        window.buyProduct = async (pid) => {
-            const p = state.products.find(x => x.id === pid);
-            if (!p || !p.stock?.length) return alert("نفد من المخزن");
-            let finalPrice = p.price;
-            if (p.discount && p.discount.expires > Date.now()) {
-                finalPrice = p.price * (1 - p.discount.percent / 100);
-            }
-            if (state.user.balance < finalPrice) return alert("رصيدك غير كافٍ");
-            if (!confirm(`شراء ${p.name}؟`)) return;
-
-            const account = p.stock[0];
-            const order = { ...account, productName: p.name, date: new Date().toLocaleString('ar-EG'), orderId: Math.random().toString(36).substr(2, 6).toUpperCase() };
-            
-            await updateDoc(doc(db, 'artifacts', coreId, 'data', state.user.uid), {
-                balance: parseFloat((state.user.balance - finalPrice).toFixed(2)),
-                orders: arrayUnion(order)
-            });
-            await updateDoc(doc(db, 'artifacts', coreId, 'products', pid), { stock: arrayRemove(account) });
-            alert("تم الشراء بنجاح!");
-        };
-
-        function getTimerText(expires) {
-            const diff = expires - Date.now();
-            if (diff <= 0) return null;
-            const h = Math.floor(diff / 3600000);
-            const m = Math.floor((diff % 3600000) / 60000);
-            const s = Math.floor((diff % 60000) / 1000);
-            return `${h}h ${m}m ${s}s`;
-        }
-
-        setInterval(() => { if(state.activeTab === 'home') render(); }, 1000);
-
-        function render() {
-            if (!state.user) return;
-            const root = document.getElementById('app-view');
-            root.innerHTML = '';
-            
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-tab'));
-            document.getElementById(`nav-${state.activeTab}`)?.classList.add('active-tab');
-
-            if (state.activeTab === 'home') {
-                root.innerHTML = `<h2 class="text-2xl font-black mb-6">المتجر</h2>`;
-                state.products.forEach(p => {
-                    const hasD = p.discount && p.discount.expires > Date.now();
-                    const price = hasD ? p.price * (1 - p.discount.percent / 100) : p.price;
-                    const timer = hasD ? getTimerText(p.discount.expires) : null;
-                    root.innerHTML += `
-                        <div class="bg-white p-6 rounded-[2.5rem] border shadow-sm mb-4 relative overflow-hidden">
-                            ${hasD ? `<div class="absolute top-0 left-0 bg-red-600 text-white text-[10px] px-3 py-1 rounded-br-2xl font-black italic">-${p.discount.percent}%</div>` : ''}
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <div class="font-black text-slate-800">${p.name}</div>
-                                    <div class="flex items-center gap-2 mt-2">
-                                        <span class="text-lg font-black text-slate-900">$${price.toFixed(2)}</span>
-                                        <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">المتبقي: ${p.stock?.length || 0}</span>
-                                    </div>
-                                    ${timer ? `<div class="text-[9px] text-red-500 font-bold mt-2 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${timer}</div>` : ''}
-                                </div>
-                                <button onclick="buyProduct('${p.id}')" class="bg-slate-900 text-white px-7 py-4 rounded-3xl font-black text-xs">شراء</button>
-                            </div>
-                        </div>`;
-                });
-            } else if (state.activeTab === 'orders') {
-                root.innerHTML = `<h2 class="text-2xl font-black mb-6">مشترياتي</h2>`;
-                (state.user.orders || []).slice().reverse().forEach(o => {
-                    root.innerHTML += `
-                        <div class="bg-white p-6 rounded-[2.5rem] border mb-4 shadow-sm">
-                            <div class="flex justify-between mb-4 border-b pb-2">
-                                <span class="font-black text-sm">${o.productName}</span>
-                                <span class="text-[10px] text-slate-400">${o.date}</span>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between text-[11px]"><span class="text-slate-400 font-bold">الحساب:</span><span class="font-black select-all">${o.email}</span></div>
-                                <div class="flex justify-between text-[11px]"><span class="text-slate-400 font-bold">الرمز:</span><span class="font-black select-all">${o.pass}</span></div>
-                                ${o.note ? `<div class="mt-2 p-3 bg-blue-50 text-blue-600 text-[10px] rounded-2xl font-bold">ملاحظة: ${o.note}</div>` : ''}
-                            </div>
-                        </div>`;
-                });
-            } else if (state.activeTab === 'profile') {
-                root.innerHTML = `
-                    <div class="bg-white p-10 rounded-[3.5rem] border text-center shadow-sm">
-                        <div class="w-20 h-20 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-2xl font-black">${state.user.email[0].toUpperCase()}</div>
-                        <h3 class="font-black text-slate-800">${state.user.email}</h3>
-                        <div class="mt-8 space-y-4">
-                            <a href="https://t.me/aboarenx" class="flex items-center justify-center gap-2 bg-slate-900 text-white p-5 rounded-3xl font-black text-sm shadow-xl shadow-slate-200">شحن الرصيد تليجرام</a>
-                            <button onclick="signOut(auth)" class="w-full p-4 text-red-400 font-black text-xs">خروج</button>
-                        </div>
-                    </div>`;
-            } else if (state.activeTab === 'admin' && state.user.role === 'admin') {
-                root.innerHTML = `
-                    <div class="space-y-4 pb-24">
-                        <!-- إدارة الرصيد -->
-                        <div class="bg-white p-6 rounded-[2.5rem] border">
-                            <button onclick="toggleSection('users')" class="w-full flex justify-between font-black text-xs text-slate-400 uppercase">
-                                <span>إدارة رصيد المستخدمين</span>
-                                <i data-lucide="${state.sections.users ? 'chevron-up' : 'chevron-down'}"></i>
-                            </button>
-                            ${state.sections.users ? `
-                                <div class="mt-4 space-y-2 max-h-60 overflow-y-auto pr-1">
-                                    ${state.users.map(u => `
-                                        <div class="flex justify-between items-center p-3 bg-slate-50 rounded-2xl">
-                                            <div class="flex flex-col"><span class="text-[10px] font-black truncate w-32">${u.email}</span><span class="text-[10px] text-green-600 font-black">$${u.balance || 0}</span></div>
-                                            <div class="flex gap-2">
-                                                <input id="bal-${u.uid}" type="number" placeholder="±" class="w-14 p-2 text-xs rounded-xl font-black text-center outline-none">
-                                                <button onclick="manualUpdateBalance('${u.uid}')" class="bg-slate-900 text-white px-4 rounded-xl text-[10px] font-black">شحن</button>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                        </div>
-
-                        <!-- تعديل المخزون -->
-                        <div class="bg-white p-6 rounded-[2.5rem] border">
-                            <button onclick="toggleSection('stockEdit')" class="w-full flex justify-between font-black text-xs text-slate-400 uppercase">
-                                <span>تعديل الحسابات (المخزون)</span>
-                                <i data-lucide="${state.sections.stockEdit ? 'chevron-up' : 'chevron-down'}"></i>
-                            </button>
-                            ${state.sections.stockEdit ? `
-                                <div class="mt-4 space-y-4">
-                                    ${state.products.map(p => `
-                                        <div class="border-b pb-3 mb-2 last:border-0">
-                                            <div class="text-[10px] font-black text-slate-400 mb-2">${p.name}</div>
-                                            ${p.stock?.map(s => `
-                                                <div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
-                                                    <span class="text-[9px] font-black truncate w-40">${s.email}</span>
-                                                    <div class="flex gap-1">
-                                                        <button onclick="editStockItem('${p.id}', '${s.id}')" class="p-1.5 bg-white rounded-lg text-blue-500 shadow-sm"><i data-lucide="edit" class="w-3 h-3"></i></button>
-                                                        <button onclick="deleteStockItem('${p.id}', '${s.id}')" class="p-1.5 bg-white rounded-lg text-red-500 shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
-                                                    </div>
-                                                </div>
-                                            `).join('') || '<div class="text-[9px] text-center">لا يوجد حسابات</div>'}
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                        </div>
-
-                        <!-- شحن المخزن -->
-                        <div class="bg-white p-6 rounded-[2.5rem] border">
-                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase">شحن مخزن جديد</h3>
-                            <div class="space-y-3">
-                                <select id="s-pid" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-black outline-none appearance-none">${state.products.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
-                                <div class="grid grid-cols-2 gap-2"><input id="s-email" placeholder="الايميل" class="p-4 bg-slate-50 rounded-2xl text-xs"><input id="s-pass" placeholder="الرمز" class="p-4 bg-slate-50 rounded-2xl text-xs"></div>
-                                <input id="s-note" placeholder="ملاحظات / بريد احتياطي" class="w-full p-4 bg-slate-50 rounded-2xl text-xs outline-none">
-                                <button onclick="addAccountToStock()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black">تأكيد الإضافة</button>
-                            </div>
-                        </div>
-
-                        <!-- التحكم بالأصناف -->
-                        <div class="bg-white p-6 rounded-[2.5rem] border">
-                            <h3 class="text-xs font-black text-slate-400 mb-4 uppercase">الأصناف</h3>
-                            <div class="space-y-2">
-                                ${state.products.map(p => `
-                                    <div class="p-3 bg-slate-50 rounded-2xl flex justify-between items-center">
-                                        <span class="text-[11px] font-black">${p.name} ($${p.price})</span>
-                                        <div class="flex gap-1">
-                                            <button onclick="setDiscountHours('${p.id}')" class="p-2 bg-orange-100 text-orange-600 rounded-xl"><i data-lucide="percent" class="w-3 h-3"></i></button>
-                                            <button onclick="deleteDoc(doc(db, 'artifacts', coreId, 'products', '${p.id}'))" class="p-2 bg-red-100 text-red-600 rounded-xl"><i data-lucide="trash" class="w-3 h-3"></i></button>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                                <div class="flex gap-2 mt-4"><input id="pn" placeholder="الاسم" class="flex-1 p-3 bg-slate-50 rounded-xl text-xs"><input id="pp" type="number" placeholder="$" class="w-16 p-3 bg-slate-50 rounded-xl text-xs"><button onclick="saveNewProd()" class="bg-slate-900 text-white px-4 rounded-xl font-black text-xs">إضافة</button></div>
-                            </div>
-                        </div>
-                    </div>`;
-            }
-            lucide.createIcons();
-        }
-
-        window.saveNewProd = async () => {
-            const n = document.getElementById('pn').value;
-            const p = parseFloat(document.getElementById('pp').value);
-            if(n && p) {
-                const ref = doc(collection(db, 'artifacts', coreId, 'products'));
-                await setDoc(ref, { id: ref.id, name: n, price: p, stock: [] });
-            }
-        };
-
-        window.login = async () => {
-            try { await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); }
-            catch(e) { alert("خطأ في البيانات"); }
-        };
-
-        window.register = async () => {
-            try { await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); }
-            catch(e) { alert("فشل التسجيل"); }
-        };
-
-    </script>
-    <style>
-        body { font-family: 'Cairo', sans-serif; background: #FBFBFE; }
-        ::-webkit-scrollbar { display: none; }
-        .nav-btn { color: #CBD5E1; transition: 0.3s; }
-        .active-tab { color: #0F172A; transform: translateY(-3px); }
-        input { border: none !important; outline: none !important; }
-    </style>
-</head>
-<body class="select-none text-slate-900">
-    <div id="loader" class="fixed inset-0 bg-white z-[300] flex items-center justify-center font-black text-slate-300">ArenStore...</div>
-
-    <div id="auth-page" class="fixed inset-0 bg-[#FBFBFE] z-[200] flex items-center justify-center p-6 hidden">
-        <div class="w-full max-w-sm">
-            <div id="login-form" class="bg-white p-10 rounded-[3.5rem] border shadow-sm">
-                <h3 class="font-black text-2xl mb-8">ArenStore</h3>
-                <div class="space-y-4">
-                    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
-                    <input id="l-pass" type="password" placeholder="كلمة المرور" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
-                    <button onclick="login()" class="w-full bg-slate-900 text-white p-5 rounded-[1.8rem] font-black">دخول</button>
-                    <button onclick="document.getElementById('login-form').classList.add('hidden'); document.getElementById('reg-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 text-center uppercase tracking-widest">إنشاء حساب</button>
-                </div>
-            </div>
-            <div id="reg-form" class="bg-white p-10 rounded-[3.5rem] border shadow-sm hidden">
-                <h3 class="font-black text-2xl mb-8">حساب جديد</h3>
-                <div class="space-y-4">
-                    <input id="r-email" type="email" placeholder="البريد الإلكتروني" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
-                    <input id="r-pass" type="password" placeholder="كلمة المرور" class="w-full p-5 bg-slate-50 rounded-[1.8rem] text-sm font-bold">
-                    <button onclick="register()" class="w-full bg-slate-900 text-white p-5 rounded-[1.8rem] font-black">تسجيل</button>
-                    <button onclick="document.getElementById('reg-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden');" class="w-full text-slate-400 font-bold text-[10px] mt-6 text-center uppercase tracking-widest">العودة</button>
-                </div>
-            </div>
+      {/* Scene 0: The Deep Sadness */}
+      {scene === 0 && (
+        <div className="animate-in fade-in zoom-in duration-1000">
+          <CloudRain size={80} className="mx-auto mb-6 opacity-30 animate-bounce" />
+          <h1 className="text-5xl font-extrabold mb-6 tracking-tighter text-white">الدنيا سودة بعيني..</h1>
+          <p className="text-2xl mb-10 font-light italic">"من زعلتي يا زينب، حتى بغداد ضواها انطفى.."</p>
+          <button 
+            onClick={() => changeScene(1)}
+            className="px-12 py-4 bg-white text-black font-bold rounded-full hover:scale-105 active:scale-95 transition-all"
+          >
+            ادخلي لقلبي <ArrowRight className="inline-block mr-2" />
+          </button>
         </div>
+      )}
+
+      {/* Scene 1: The Iraqi Atab */}
+      {scene === 1 && (
+        <div className="animate-in slide-in-from-right duration-1000 max-w-2xl">
+          <h2 className="text-4xl font-bold mb-8 text-blue-400">يا بعد روحي وهلي</h2>
+          <p className="text-2xl leading-relaxed mb-10 px-4">
+            "تدري الزعل ما يلوك لوجهج الحلو.. إنتي شمعة بيتي وضوه عيوني، شلون يطاوعج قلبج ننام وإحنا متباعدين؟"
+          </p>
+          <button 
+            onClick={() => changeScene(2)}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-2xl font-bold shadow-lg transition-all"
+          >
+            اسمعيني بعد..
+          </button>
+        </div>
+      )}
+
+      {/* Scene 2: The Apology */}
+      {scene === 2 && (
+        <div className="animate-in zoom-in-up duration-1000 max-w-md">
+          <Heart size={100} fill="#ec4899" className="mx-auto mb-8 text-pink-500 animate-pulse" />
+          <h2 className="text-4xl font-black mb-6">آسف وحقج عليّ</h2>
+          <p className="text-xl mb-10 leading-loose">
+            "لو أدري الوجع يمسج، جان شلته بصدري ولا خليتج تضوجين ثانية وحدة. زينب، إنتي العشق الصافي."
+          </p>
+          <button 
+            onClick={() => changeScene(3)}
+            className="bg-pink-600 hover:bg-pink-500 text-white px-10 py-4 rounded-full font-bold transition-transform"
+          >
+            آخر مرحلة..
+          </button>
+        </div>
+      )}
+
+      {/* Scene 3: The Challenge (The Kiss) */}
+      {scene === 3 && (
+        <div className="animate-in fade-in duration-1000 bg-white p-12 rounded-[40px] shadow-2xl border-t-8 border-rose-600 max-w-sm w-full">
+          <div className="mb-6 inline-block p-4 bg-rose-50 rounded-2xl">
+            <Lock size={40} className="text-rose-600" />
+          </div>
+          <h2 className="text-3xl font-black mb-8 text-slate-800">قفل الصلح</h2>
+          
+          <div className="space-y-8">
+            <div className="relative">
+                <label className="block text-right text-lg font-bold text-slate-700 mb-4 mr-2">بوسني</label>
+                <input 
+                  type="text" 
+                  value={kissInput}
+                  onChange={(e) => setKissInput(e.target.value)}
+                  className={`w-full px-6 py-5 bg-slate-100 border-2 rounded-2xl outline-none text-center text-2xl transition-all ${error ? 'border-red-500 animate-shake' : 'border-transparent focus:border-rose-500'}`}
+                  autoFocus
+                />
+            </div>
+            
+            <button 
+              onClick={checkKiss}
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white py-5 rounded-2xl text-xl font-black shadow-lg shadow-rose-200 transition-all active:scale-95 flex items-center justify-center gap-3"
+            >
+              فتح القفل <HeartHandshake />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Scene 4: The Grand Finale */}
+      {scene === 4 && (
+        <div className="animate-in zoom-in duration-1000 relative">
+          <Sparkles size={150} className="text-yellow-200 absolute -top-24 left-1/2 -translate-x-1/2 opacity-40 animate-spin-slow" />
+          <h1 className="text-7xl font-black mb-8 drop-shadow-2xl">فدوة لقلبج! ❤️</h1>
+          <p className="text-3xl mb-12 font-medium">رجعت الروح لجسدي يا زينب</p>
+          
+          <div className="bg-white/10 backdrop-blur-2xl p-10 rounded-[40px] border border-white/20 shadow-2xl max-w-xl mx-auto">
+             <p className="text-2xl leading-relaxed italic">
+               "أوعدج كدام الله وخلقه، ما أخلي الدمعة تنزل من عيونج، وما يفرقنا إلا الموت. إنتي ملكتي وملاكي وعمري كله."
+             </p>
+          </div>
+
+          <div className="mt-12 flex justify-center gap-6">
+             {[1, 2, 3].map((i) => (
+               <div key={i} className="bg-white text-rose-600 p-5 rounded-full animate-bounce shadow-xl" style={{ animationDelay: `${i * 0.2}s` }}>
+                  <Heart fill="currentColor" size={35} />
+               </div>
+             ))}
+          </div>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Changa:wght@400;700;800&display=swap');
+        body { font-family: 'Changa', sans-serif; direction: rtl; }
+        
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 15s linear infinite;
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-10px); }
+          75% { transform: translateX(10px); }
+        }
+        .animate-shake {
+          animation: shake 0.2s ease-in-out 0s 2;
+        }
+      `}} />
     </div>
+  );
+};
 
-    <div class="max-w-lg mx-auto min-h-screen relative">
-        <header class="p-8 sticky top-0 z-40 flex justify-between items-center bg-white/80 backdrop-blur-xl">
-            <h1 class="font-black text-2xl tracking-tighter">ArenStore</h1>
-            <div id="balance-display" class="bg-slate-900 text-white px-7 py-2.5 rounded-2xl font-black text-sm">$0.00</div>
-        </header>
-
-        <main id="app-view" class="p-8 pb-32"></main>
-
-        <nav class="fixed bottom-8 left-8 right-8 max-w-lg mx-auto bg-white/95 backdrop-blur-2xl border rounded-[2.8rem] p-2 flex justify-around shadow-2xl z-50">
-            <button onclick="setTab('home')" id="nav-home" class="nav-btn p-4 active-tab"><i data-lucide="layout-grid"></i></button>
-            <button onclick="setTab('orders')" id="nav-orders" class="nav-btn p-4"><i data-lucide="package"></i></button>
-            <button onclick="setTab('profile')" id="nav-profile" class="nav-btn p-4"><i data-lucide="user"></i></button>
-            <button id="admin-nav-btn" onclick="setTab('admin')" id="nav-admin" class="nav-btn p-4 text-slate-900" style="display:none;"><i data-lucide="shield-check"></i></button>
-        </nav>
-    </div>
-</body>
-</html>
+export default App;
 
