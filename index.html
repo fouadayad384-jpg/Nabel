@@ -162,8 +162,8 @@
         .chat-bubble-right { background-color: #007aff; color: white; border-radius: 20px 20px 5px 20px; padding: 10px 15px; max-width: 75%; margin-bottom: 10px; align-self: flex-end; }
         
         .tg-bg { background-color: #e4ddd6; background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); }
-        .tg-bubble-left { background-color: #ffffff; color: black; border-radius: 12px 12px 12px 0px; padding: 8px 12px; max-width: 75%; margin-bottom: 10px; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .tg-bubble-right { background-color: #effdde; color: black; border-radius: 12px 12px 0px 12px; padding: 8px 12px; max-width: 75%; margin-bottom: 10px; align-self: flex-end; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .tg-bubble-left { background-color: #ffffff; color: black; border-radius: 12px 12px 12px 0px; padding: 8px 12px; max-width: 80%; margin-bottom: 10px; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .tg-bubble-right { background-color: #effdde; color: black; border-radius: 12px 12px 0px 12px; padding: 8px 12px; max-width: 80%; margin-bottom: 10px; align-self: flex-end; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
         /* إشعارات وأدوات الآيفون */
         #whatsapp-notify { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 70; transform: translateY(-150%); transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -227,61 +227,55 @@
                     <span class="text-white text-xs font-semibold drop-shadow-md">الملاحظات</span>
                 </div>
 
-                <!-- 3. صور زينب (الجديد - صور القمر) -->
-                <div class="flex flex-col items-center gap-1" onclick="openApp('zainab-photos-app')">
-                    <div class="app-icon bg-gradient-to-tr from-gray-700 to-black text-white"><i class="fas fa-moon"></i></div>
-                    <span class="text-white text-xs font-semibold drop-shadow-md">صور زينب</span>
-                </div>
-
-                <!-- 4. الموقع الازرك (الجديد - المقلب) -->
+                <!-- 3. الموقع الازرك (المقلب) -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('blue-site-app')">
                     <div class="app-icon bg-blue-700 text-white"><i class="fas fa-globe"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md whitespace-nowrap overflow-hidden">الموقع الازرك</span>
                 </div>
 
-                <!-- 5. VPN -->
+                <!-- 4. VPN -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('vpn-app')">
                     <div class="app-icon bg-blue-600 text-white"><i class="fas fa-shield-alt"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">VPN</span>
                 </div>
 
-                <!-- 6. الصور العادية -->
+                <!-- 5. الصور العادية -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('gallery-app')">
                     <div class="app-icon bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white"><i class="fas fa-images"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الصور</span>
                 </div>
 
-                <!-- 7. الهاتف -->
+                <!-- 6. الهاتف -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('phone-app')">
                     <div class="app-icon bg-green-500 text-white"><i class="fas fa-phone"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الهاتف</span>
                 </div>
 
-                <!-- 8. الرسائل -->
+                <!-- 7. الرسائل -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('messages-app')">
                     <div class="app-icon bg-green-400 text-white"><i class="fas fa-comment"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الرسائل</span>
                 </div>
 
-                <!-- 9. واتساب -->
+                <!-- 8. واتساب -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('whatsapp-app')">
                     <div class="app-icon bg-green-600 text-white"><i class="fab fa-whatsapp"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">واتساب</span>
                 </div>
 
-                <!-- 10. تيليجرام -->
+                <!-- 9. تيليجرام -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('telegram-app')">
                     <div class="app-icon bg-blue-500 text-white"><i class="fab fa-telegram-plane"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">تيليجرام</span>
                 </div>
 
-                <!-- 11. الموسيقى -->
+                <!-- 10. الموسيقى -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('music-app')">
                     <div class="app-icon bg-pink-500 text-white"><i class="fas fa-music"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الموسيقى</span>
                 </div>
                 
-                <!-- 12. الطقس -->
+                <!-- 11. الطقس -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('weather-app')">
                     <div class="app-icon bg-blue-400 text-white"><i class="fas fa-cloud-sun"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الطقس</span>
@@ -338,25 +332,6 @@
             <div id="camera-flash"></div>
         </div>
 
-        <!-- ================= تطبيق صور زينب (القمر) ================= -->
-        <div id="zainab-photos-app" class="app-window bg-black text-white pb-10">
-            <div class="pt-16 px-4 pb-2 bg-black/90 backdrop-blur-md sticky top-0 z-10 flex justify-between items-end border-b border-gray-800">
-                <h1 class="text-3xl font-bold text-white">صور زينب</h1>
-                <button onclick="closeApps()" class="text-blue-500 font-semibold">إغلاق</button>
-            </div>
-            <div class="p-1">
-                <div class="text-lg font-bold px-3 py-2 text-gray-300">أجمل قمر ❤️</div>
-                <div class="grid grid-cols-2 gap-1">
-                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1522030299830-16b8d3d049fe?w=300&q=80" class="w-full h-full object-cover"></div>
-                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1532693322450-2cb5c511067d?w=300&q=80" class="w-full h-full object-cover"></div>
-                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?w=300&q=80" class="w-full h-full object-cover"></div>
-                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=300&q=80" class="w-full h-full object-cover"></div>
-                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1517409241977-164741639c07?w=300&q=80" class="w-full h-full object-cover"></div>
-                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1498036882173-b41c28afeb42?w=300&q=80" class="w-full h-full object-cover"></div>
-                </div>
-            </div>
-        </div>
-
         <!-- ================= تطبيق الموقع الازرك (المقلب) ================= -->
         <div id="blue-site-app" class="app-window bg-blue-900 text-white flex flex-col items-center justify-center pb-10">
             <button onclick="closeApps()" class="absolute top-16 left-6 text-white text-2xl z-50"><i class="fas fa-times"></i></button>
@@ -398,10 +373,21 @@
             <div class="flex-1 p-4 flex flex-col overflow-y-auto pb-24">
                 <div class="text-center text-xs text-gray-500 bg-white/70 rounded-full w-20 mx-auto mb-4 py-1">اليوم</div>
                 
+                <!-- رسالة عادية -->
                 <div class="tg-bubble-left mt-2 flex items-end justify-between gap-2">
                     <span>هلاووو زنوطه شلونج</span>
                     <span class="text-[10px] text-gray-400 ml-2">10:41</span>
                 </div>
+
+                <!-- رسالة الصورة مع القمر -->
+                <div class="tg-bubble-left mt-2 flex flex-col gap-1 w-[80%]">
+                    <img src="https://images.unsplash.com/photo-1522030299830-16b8d3d049fe?w=400&q=80" alt="القمر" class="rounded-lg w-full object-cover max-h-48 mb-1">
+                    <div class="flex items-end justify-between gap-2">
+                        <span>هاي صورتج ❤️</span>
+                        <span class="text-[10px] text-gray-400 ml-2">10:42</span>
+                    </div>
+                </div>
+
             </div>
             <div class="bg-white p-3 flex items-center gap-3 absolute bottom-0 w-full shadow-lg">
                 <i class="fas fa-paperclip text-gray-500 text-xl"></i>
