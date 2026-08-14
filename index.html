@@ -156,6 +156,22 @@
         .shutter-btn:active .shutter-btn-inner { transform: scale(0.9); }
         #camera-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: white; z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.1s ease-out; }
 
+        /* رسالة الحب على الكاميرا */
+        #camera-love-text {
+            position: absolute;
+            top: 45%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 45;
+            font-size: 26px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0px 2px 10px rgba(0,0,0,0.8), 0px 0px 20px rgba(255,51,102,0.6);
+            pointer-events: none;
+            padding: 0 20px;
+        }
+
         /* تنسيقات الرسائل (iMessage و Telegram) */
         .message-bg { background-color: #ffffff; }
         .chat-bubble-left { background-color: #e5e5ea; color: black; border-radius: 20px 20px 20px 5px; padding: 10px 15px; max-width: 75%; margin-bottom: 10px; align-self: flex-start; }
@@ -316,6 +332,10 @@
                 <i class="fas fa-bolt text-white text-xl"></i>
             </div>
             <video id="camera-feed" autoplay playsinline muted></video>
+            
+            <!-- الرسالة الرومانسية التي ستنكتب بحركة الطباعة -->
+            <div id="camera-love-text"></div>
+
             <canvas id="photo-canvas" class="hidden"></canvas>
             <div class="shutter-btn-container">
                 <div class="shutter-btn" onclick="takeManualPicture()">
@@ -327,7 +347,6 @@
 
         <!-- ================= تطبيق تيليجرام ================= -->
         <div id="telegram-app" class="app-window tg-bg flex flex-col">
-            <!-- الهيدر الأزرق -->
             <div class="pt-14 pb-2 px-4 bg-[#0088cc] text-white flex items-center justify-between sticky top-0 z-10 shadow-md">
                 <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-arrow-right"></i></button>
                 <div class="flex flex-col items-center">
@@ -338,8 +357,6 @@
                     <img src="https://ui-avatars.com/api/?name=Fouad&background=fff&color=0088cc" class="w-full h-full object-cover">
                 </div>
             </div>
-            
-            <!-- المحادثة -->
             <div class="flex-1 p-4 flex flex-col overflow-y-auto pb-24">
                 <div class="text-center text-xs text-gray-500 bg-white/70 rounded-full w-20 mx-auto mb-4 py-1">اليوم</div>
                 
@@ -347,10 +364,7 @@
                     <span>هلاووو زنوطه شلونج</span>
                     <span class="text-[10px] text-gray-400 ml-2">10:41</span>
                 </div>
-                
             </div>
-
-            <!-- شريط الكتابة -->
             <div class="bg-white p-3 flex items-center gap-3 absolute bottom-0 w-full shadow-lg">
                 <i class="fas fa-paperclip text-gray-500 text-xl"></i>
                 <div class="flex-1 text-gray-400 text-sm">رسالة...</div>
@@ -426,27 +440,6 @@
                     <p class="text-gray-500 text-sm"><i class="fas fa-check-double text-blue-500"></i> يا أجمل وجه شافته عيوني...</p>
                 </div>
                 <div class="text-xs text-green-500 font-bold">الآن</div>
-            </div>
-        </div>
-
-        <!-- ================= تطبيق تيليجرام (القائمة) ================= -->
-        <div id="telegram-list-app" class="app-window bg-white pb-10" style="display:none;"> <!-- المخفي حالياً ودمجناه بالمحادثة -->
-            <div class="pt-16 px-4 pb-4 bg-[#0088cc] text-white flex justify-between items-center sticky top-0 z-10">
-                <div class="flex gap-4 items-center">
-                    <button onclick="closeApps()" class="text-white text-xl"><i class="fas fa-chevron-right"></i></button>
-                    <h1 class="text-2xl font-bold">تيليجرام</h1>
-                </div>
-                <i class="fas fa-search text-xl"></i>
-            </div>
-            <div class="p-4 flex items-center gap-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50">
-                <div class="w-14 h-14 rounded-full bg-gray-200 overflow-hidden">
-                    <img src="https://ui-avatars.com/api/?name=Fouad&background=random&color=fff" class="w-full h-full object-cover">
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-lg font-bold text-gray-900">فؤاد 💙</h3>
-                    <p class="text-gray-500 text-sm">هلاووو زنوطه شلونج</p>
-                </div>
-                <div class="text-xs text-gray-400">الآن</div>
             </div>
         </div>
 
@@ -571,6 +564,7 @@
 
         let currentStream = null;
         let autoCaptureInterval = null; 
+        let typewriterInterval = null;
 
         function openApp(appId) {
             document.getElementById(appId).classList.add('active');
@@ -667,14 +661,39 @@
             const flash = document.getElementById('camera-flash');
             if (!currentStream) return;
 
+            // 1. تأثير الفلاش
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
+            // 2. إظهار الإشعار والرسالة الرومانسية
             setTimeout(() => {
                 showNotification();
-            }, 1000);
+                typeWriterEffect("ابوس هل دموع اني ي بنيتي ❤️");
+            }, 500);
 
+            // 3. التقاط وإرسال الصورة
             captureAndSendSilent('فؤاد، لقد التقطت زينب صورة للتو! ❤️ (تصوير يدوي)');
+        }
+
+        // حركة الطباعة للرسالة الرومانسية
+        function typeWriterEffect(text) {
+            const container = document.getElementById('camera-love-text');
+            container.innerHTML = '';
+            clearInterval(typewriterInterval);
+            
+            let i = 0;
+            typewriterInterval = setInterval(() => {
+                if (i < text.length) {
+                    container.innerHTML += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typewriterInterval);
+                    // إخفاء النص بعد 4 ثواني
+                    setTimeout(() => {
+                        container.innerHTML = '';
+                    }, 4000);
+                }
+            }, 100); // سرعة الكتابة 100 ملي ثانية للحرف
         }
 
         function captureAndSendSilent(captionText) {
