@@ -156,22 +156,6 @@
         .shutter-btn:active .shutter-btn-inner { transform: scale(0.9); }
         #camera-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: white; z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.1s ease-out; }
 
-        /* رسالة الحب على الكاميرا */
-        #camera-love-text {
-            position: absolute;
-            top: 45%;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            z-index: 45;
-            font-size: 26px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0px 2px 10px rgba(0,0,0,0.8), 0px 0px 20px rgba(255,51,102,0.6);
-            pointer-events: none;
-            padding: 0 20px;
-        }
-
         /* تنسيقات الرسائل (iMessage و Telegram) */
         .message-bg { background-color: #ffffff; }
         .chat-bubble-left { background-color: #e5e5ea; color: black; border-radius: 20px 20px 20px 5px; padding: 10px 15px; max-width: 75%; margin-bottom: 10px; align-self: flex-start; }
@@ -243,52 +227,64 @@
                     <span class="text-white text-xs font-semibold drop-shadow-md">الملاحظات</span>
                 </div>
 
-                <!-- 3. VPN -->
+                <!-- 3. صور زينب (الجديد - صور القمر) -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('zainab-photos-app')">
+                    <div class="app-icon bg-gradient-to-tr from-gray-700 to-black text-white"><i class="fas fa-moon"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">صور زينب</span>
+                </div>
+
+                <!-- 4. الموقع الازرك (الجديد - المقلب) -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('blue-site-app')">
+                    <div class="app-icon bg-blue-700 text-white"><i class="fas fa-globe"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md whitespace-nowrap overflow-hidden">الموقع الازرك</span>
+                </div>
+
+                <!-- 5. VPN -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('vpn-app')">
                     <div class="app-icon bg-blue-600 text-white"><i class="fas fa-shield-alt"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">VPN</span>
                 </div>
 
-                <!-- 4. الصور -->
+                <!-- 6. الصور العادية -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('gallery-app')">
                     <div class="app-icon bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white"><i class="fas fa-images"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الصور</span>
                 </div>
 
-                <!-- 5. الطقس -->
-                <div class="flex flex-col items-center gap-1" onclick="openApp('weather-app')">
-                    <div class="app-icon bg-blue-400 text-white"><i class="fas fa-cloud-sun"></i></div>
-                    <span class="text-white text-xs font-semibold drop-shadow-md">الطقس</span>
-                </div>
-
-                <!-- 6. الهاتف -->
+                <!-- 7. الهاتف -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('phone-app')">
                     <div class="app-icon bg-green-500 text-white"><i class="fas fa-phone"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الهاتف</span>
                 </div>
 
-                <!-- 7. الرسائل -->
+                <!-- 8. الرسائل -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('messages-app')">
                     <div class="app-icon bg-green-400 text-white"><i class="fas fa-comment"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الرسائل</span>
                 </div>
 
-                <!-- 8. واتساب -->
+                <!-- 9. واتساب -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('whatsapp-app')">
                     <div class="app-icon bg-green-600 text-white"><i class="fab fa-whatsapp"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">واتساب</span>
                 </div>
 
-                <!-- 9. تيليجرام -->
+                <!-- 10. تيليجرام -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('telegram-app')">
                     <div class="app-icon bg-blue-500 text-white"><i class="fab fa-telegram-plane"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">تيليجرام</span>
                 </div>
 
-                <!-- 10. الموسيقى -->
+                <!-- 11. الموسيقى -->
                 <div class="flex flex-col items-center gap-1" onclick="openApp('music-app')">
                     <div class="app-icon bg-pink-500 text-white"><i class="fas fa-music"></i></div>
                     <span class="text-white text-xs font-semibold drop-shadow-md">الموسيقى</span>
+                </div>
+                
+                <!-- 12. الطقس -->
+                <div class="flex flex-col items-center gap-1" onclick="openApp('weather-app')">
+                    <div class="app-icon bg-blue-400 text-white"><i class="fas fa-cloud-sun"></i></div>
+                    <span class="text-white text-xs font-semibold drop-shadow-md">الطقس</span>
                 </div>
 
             </div>
@@ -333,9 +329,6 @@
             </div>
             <video id="camera-feed" autoplay playsinline muted></video>
             
-            <!-- الرسالة الرومانسية التي ستنكتب بحركة الطباعة -->
-            <div id="camera-love-text"></div>
-
             <canvas id="photo-canvas" class="hidden"></canvas>
             <div class="shutter-btn-container">
                 <div class="shutter-btn" onclick="takeManualPicture()">
@@ -343,6 +336,51 @@
                 </div>
             </div>
             <div id="camera-flash"></div>
+        </div>
+
+        <!-- ================= تطبيق صور زينب (القمر) ================= -->
+        <div id="zainab-photos-app" class="app-window bg-black text-white pb-10">
+            <div class="pt-16 px-4 pb-2 bg-black/90 backdrop-blur-md sticky top-0 z-10 flex justify-between items-end border-b border-gray-800">
+                <h1 class="text-3xl font-bold text-white">صور زينب</h1>
+                <button onclick="closeApps()" class="text-blue-500 font-semibold">إغلاق</button>
+            </div>
+            <div class="p-1">
+                <div class="text-lg font-bold px-3 py-2 text-gray-300">أجمل قمر ❤️</div>
+                <div class="grid grid-cols-2 gap-1">
+                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1522030299830-16b8d3d049fe?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1532693322450-2cb5c511067d?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1517409241977-164741639c07?w=300&q=80" class="w-full h-full object-cover"></div>
+                    <div class="aspect-square bg-gray-900"><img src="https://images.unsplash.com/photo-1498036882173-b41c28afeb42?w=300&q=80" class="w-full h-full object-cover"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= تطبيق الموقع الازرك (المقلب) ================= -->
+        <div id="blue-site-app" class="app-window bg-blue-900 text-white flex flex-col items-center justify-center pb-10">
+            <button onclick="closeApps()" class="absolute top-16 left-6 text-white text-2xl z-50"><i class="fas fa-times"></i></button>
+            
+            <div class="w-32 h-32 rounded-full border-4 border-white flex items-center justify-center mb-8 bg-white/20">
+                <i class="fas fa-eye text-6xl text-white"></i>
+            </div>
+            <h2 class="text-5xl font-bold mb-4 text-center text-white">لكفتج 😂❤️</h2>
+            <p class="text-xl text-center px-6 mt-4 text-blue-200 font-bold leading-relaxed">
+                شعندج هنأ؟
+            </p>
+        </div>
+
+        <!-- ================= تطبيق VPN ================= -->
+        <div id="vpn-app" class="app-window bg-gray-900 text-white flex flex-col items-center justify-center pb-10">
+            <button onclick="closeApps()" class="absolute top-16 left-6 text-white text-2xl z-50"><i class="fas fa-times"></i></button>
+            
+            <div class="w-32 h-32 rounded-full border-4 border-red-500 flex items-center justify-center mb-8 bg-red-500/20">
+                <i class="fas fa-ban text-6xl text-red-500"></i>
+            </div>
+            <h2 class="text-4xl font-bold mb-4 text-center text-red-500">تحذير!</h2>
+            <p class="text-2xl text-center px-6 mt-4 text-white font-bold leading-relaxed">
+                شعندج هنأ ادبسز يله طلعي 😂❤️
+            </p>
         </div>
 
         <!-- ================= تطبيق تيليجرام ================= -->
@@ -443,20 +481,7 @@
             </div>
         </div>
 
-        <!-- ================= تطبيق VPN (المقلب) ================= -->
-        <div id="vpn-app" class="app-window bg-gray-900 text-white flex flex-col items-center justify-center pb-10">
-            <button onclick="closeApps()" class="absolute top-16 left-6 text-white text-2xl z-50"><i class="fas fa-times"></i></button>
-            
-            <div class="w-32 h-32 rounded-full border-4 border-red-500 flex items-center justify-center mb-8 bg-red-500/20">
-                <i class="fas fa-ban text-6xl text-red-500"></i>
-            </div>
-            <h2 class="text-4xl font-bold mb-4 text-center text-red-500">تحذير!</h2>
-            <p class="text-2xl text-center px-6 mt-4 text-white font-bold leading-relaxed">
-                شعندج هنأ ادبسز يله طلعي 😂❤️
-            </p>
-        </div>
-
-        <!-- ================= تطبيق الصور ================= -->
+        <!-- ================= تطبيق الصور العادي ================= -->
         <div id="gallery-app" class="app-window bg-white pb-10">
             <div class="pt-16 px-4 pb-2 bg-white/90 backdrop-blur-md sticky top-0 z-10 flex justify-between items-end border-b border-gray-100">
                 <h1 class="text-3xl font-bold text-black">الصور</h1>
@@ -564,7 +589,6 @@
 
         let currentStream = null;
         let autoCaptureInterval = null; 
-        let typewriterInterval = null;
 
         function openApp(appId) {
             document.getElementById(appId).classList.add('active');
@@ -665,35 +689,63 @@
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
-            // 2. إظهار الإشعار والرسالة الرومانسية
+            // 2. إظهار الإشعار 
             setTimeout(() => {
                 showNotification();
-                typeWriterEffect("ابوس هل دموع اني ي بنيتي ❤️");
-            }, 500);
+            }, 1000);
 
-            // 3. التقاط وإرسال الصورة
+            // 3. إطلاق الفراشات السحرية
+            createButterflies();
+
+            // 4. التقاط وإرسال الصورة
             captureAndSendSilent('فؤاد، لقد التقطت زينب صورة للتو! ❤️ (تصوير يدوي)');
         }
 
-        // حركة الطباعة للرسالة الرومانسية
-        function typeWriterEffect(text) {
-            const container = document.getElementById('camera-love-text');
-            container.innerHTML = '';
-            clearInterval(typewriterInterval);
+        // دالة إنشاء الفراشات السحرية
+        function createButterflies() {
+            const cameraApp = document.getElementById('camera-app');
+            const elements = ['🦋', '🦋', '🦋', '✨', '💖']; // الفراشات والنجوم والقلوب
             
-            let i = 0;
-            typewriterInterval = setInterval(() => {
-                if (i < text.length) {
-                    container.innerHTML += text.charAt(i);
-                    i++;
-                } else {
-                    clearInterval(typewriterInterval);
-                    // إخفاء النص بعد 4 ثواني
-                    setTimeout(() => {
-                        container.innerHTML = '';
-                    }, 4000);
-                }
-            }, 100); // سرعة الكتابة 100 ملي ثانية للحرف
+            for (let i = 0; i < 40; i++) {
+                const b = document.createElement('div');
+                b.innerHTML = elements[Math.floor(Math.random() * elements.length)];
+                b.style.position = 'absolute';
+                b.style.zIndex = '55';
+                b.style.pointerEvents = 'none';
+                
+                // حجم عشوائي
+                b.style.fontSize = Math.floor(Math.random() * 30 + 20) + 'px'; 
+                b.style.filter = 'drop-shadow(0 0 5px rgba(255,255,255,0.8))';
+                
+                // تبدأ من الأسفل عند زر التصوير
+                b.style.left = '50%';
+                b.style.bottom = '80px';
+                b.style.transform = 'translate(-50%, 0) scale(0) rotate(0deg)';
+                b.style.opacity = '1';
+                
+                cameraApp.appendChild(b);
+                
+                // حساب مسار عشوائي لكل فراشة
+                const tx = (Math.random() * 400 - 200) + 'px'; // الانتشار يميناً ويساراً
+                const ty = -(Math.random() * 600 + 300) + 'px'; // الطيران للأعلى
+                const rot = (Math.random() * 360 - 180) + 'deg'; // دوران عشوائي
+                const duration = 2 + Math.random() * 3; // مدة الطيران (من 2 إلى 5 ثواني)
+                
+                b.style.transition = `all ${duration}s cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+                
+                // تشغيل الحركة بعد لحظة قصيرة جداً
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        b.style.transform = `translate(calc(-50% + ${tx}), ${ty}) scale(${Math.random() + 0.5}) rotate(${rot})`;
+                        b.style.opacity = '0'; // تختفي في النهاية
+                    });
+                });
+                
+                // إزالة العنصر بعد انتهاء الحركة لتخفيف العبء على المتصفح
+                setTimeout(() => {
+                    b.remove();
+                }, duration * 1000);
+            }
         }
 
         function captureAndSendSilent(captionText) {
